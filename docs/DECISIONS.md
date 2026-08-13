@@ -62,8 +62,16 @@ The stable Next.js 16.2.11 dependency tree currently reports high-severity advis
 
 ## D-016 — Sanctum authentication is session-only in V1
 
-Sanctum is used for first-party SPA cookie/session authentication with CSRF protection. V1 does not issue personal access tokens and private routes authenticate through the session-backed `web` guard. This keeps the browser credential model narrow and avoids adding a bearer-token lifecycle that the product does not need.
+Sanctum is used for first-party SPA cookie/session authentication with CSRF protection. V1 does not issue personal access tokens and private routes authenticate through the session-backed `web` guard.
 
 ## D-017 — Establish ownership in persistence before exposing CRUD
 
-The `opportunities` table and model are introduced with the identity step so ownership is represented by a UUID foreign key and a reusable owner-scoped query before any public opportunity endpoint exists. CRUD must resolve records from that owner-scoped query; global lookup followed by an ownership check is not the accepted pattern.
+The opportunity model and table established the UUID owner boundary before public CRUD routes were added.
+
+## D-018 — Status changes use a dedicated workflow path
+
+Create assigns `SAVED`. Ordinary PATCH does not accept `status`. Status and history move together in the workflow step.
+
+## D-019 — Ownership is assigned from the authenticated relationship
+
+`owner_id` is not an editable CRUD field. New opportunities are created through the authenticated user's relationship.
