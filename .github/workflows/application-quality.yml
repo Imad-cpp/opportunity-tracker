@@ -1,4 +1,4 @@
-name: Build Opportunity CRUD V3
+name: Build Opportunity CRUD V4
 
 on:
   push:
@@ -52,6 +52,35 @@ jobs:
           Path('/tmp/build-crud.py').write_text('\n'.join(lines) + '\n', encoding='utf-8')
           PY
           python3 /tmp/build-crud.py
+      - name: Apply reviewed regression fixes
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 <<'PY'
+          from pathlib import Path
+
+          bootstrap = Path('apps/api/bootstrap/app.php')
+          text = bootstrap.read_text(encoding='utf-8')
+          old_import = 'use Illuminate\\Database\\Eloquent\\ModelNotFoundException;\n'
+          new_import = 'use Symfony\\Component\\HttpKernel\\Exception\\NotFoundHttpException;\n'
+          old_handler = 'function (ModelNotFoundException $exception, Request $request)'
+          new_handler = 'function (NotFoundHttpException $exception, Request $request)'
+          if text.count(old_import) != 1 or text.count(old_handler) != 1:
+              raise SystemExit('generated not-found handler shape changed unexpectedly')
+          text = text.replace(old_import, new_import, 1).replace(old_handler, new_handler, 1)
+          bootstrap.write_text(text, encoding='utf-8')
+
+          ownership = Path('apps/api/tests/Feature/OwnershipScopeTest.php')
+          text = ownership.read_text(encoding='utf-8')
+          old = """return Opportunity::query()->create([
+            'owner_id' => $owner->getKey(),
+            'type' => 'INTERNSHIP',"""
+          new = """return $owner->opportunities()->create([
+            'type' => 'INTERNSHIP',"""
+          if text.count(old) != 1:
+              raise SystemExit('ownership test helper shape changed unexpectedly')
+          ownership.write_text(text.replace(old, new, 1), encoding='utf-8')
+          PY
       - name: Format and validate CRUD
         working-directory: apps/api
         run: |
