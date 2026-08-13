@@ -4,7 +4,7 @@ All primary identifiers are UUIDs.
 
 ## Implementation status
 
-The `users`, `sessions`, `password_reset_tokens` and `opportunities` tables are implemented. `opportunity_events` remains planned for the workflow/history step.
+The `users`, `sessions`, `password_reset_tokens` and `opportunities` tables are implemented. Opportunity CRUD is implemented. `opportunity_events` remains planned.
 
 ## users
 
@@ -15,13 +15,9 @@ The `users`, `sessions`, `password_reset_tokens` and `opportunities` tables are 
 - `timezone` validated IANA time-zone identifier
 - timestamps
 
-Account identifiers are generated server-side through Eloquent UUID support. Registration normalizes email casing and surrounding whitespace before uniqueness validation/persistence.
-
 ## sessions
 
 Laravel's server-side session table stores the authenticated browser session. Its nullable `user_id` column is UUID-compatible with `users.id`.
-
-V1 does not introduce a personal-access-token table as part of the public authentication contract; Sanctum is used for first-party session authentication.
 
 ## opportunities
 
@@ -43,23 +39,28 @@ V1 does not introduce a personal-access-token table as part of the public authen
 - `archived_at` nullable timestamp
 - timestamps
 
-The model exposes an `ownedBy(User)` query scope. Public CRUD endpoints are not implemented yet, so the table/model currently establishes the persistence and authorization boundary for the next step rather than exposing an incomplete API.
+The model exposes `ownedBy(User)`. New records are created through the authenticated user's relationship and `owner_id` is not mass assignable.
 
-### Invariants
+### Implemented CRUD behavior
 
-- Every opportunity belongs to exactly one owner.
-- `source_url`, when present, must be an absolute `http` or `https` URL.
-- Notes are plain text and bounded in size.
-- `deadline_precision` is null when no deadline exists.
-- `deadline_timezone` is required when an exact deadline time was supplied.
-- Date-only deadline input records `DATE` precision.
-- Archive does not alter status automatically.
+- Create assigns `SAVED` server-side.
+- `type` and `priority` use fixed allowlists.
+- Title and organization are required, trimmed and bounded.
+- Source URL accepts valid HTTP(S) URLs only.
+- Location and notes are optional bounded strings.
+- Ordinary CRUD does not write status, deadline, next-action or archive fields directly.
+- Archive/restore is separate from status.
+- The default list excludes archived records; owned detail reads may inspect them.
 
-Validation for the opportunity-field invariants above is planned with CRUD and must not be inferred merely from the current database columns.
+### Deferred field behavior
+
+- Status changes and history: workflow/history step.
+- Next action: workflow/history step.
+- Deadline precision/time-zone normalization: search/deadline step.
 
 ## opportunity_events
 
-Append-oriented user-facing history for meaningful lifecycle activity. **Not implemented yet.**
+**Not implemented yet.** Planned fields:
 
 - `id` UUID primary key
 - `opportunity_id` UUID foreign key → opportunities
@@ -67,26 +68,18 @@ Append-oriented user-facing history for meaningful lifecycle activity. **Not imp
 - `type` enum-like string
 - `from_status` nullable string
 - `to_status` nullable string
-- `changed_fields` nullable JSON array of field names
+- `changed_fields` nullable JSON array
 - `created_at` timestamp
 
-Initial V1 event types:
-
-- `CREATED`
-- `UPDATED`
-- `STATUS_CHANGED`
-- `ARCHIVED`
-- `RESTORED`
-
-Event metadata must not duplicate notes, session data, credentials or other unnecessary sensitive content. For ordinary updates, record changed field names rather than before/after body values.
+Planned event types: `CREATED`, `UPDATED`, `STATUS_CHANGED`, `ARCHIVED`, `RESTORED`.
 
 ## Delete behavior
 
-Permanent deletion will cascade dependent `opportunity_events` once that table is implemented. V1 prefers user data minimization over retaining a hidden forensic tombstone for deleted personal tracking data.
+Permanent deletion currently removes the owned opportunity row. When events are added, dependent events must be removed with the opportunity.
 
 ## Useful indexes
 
-Implemented on `opportunities`:
+Implemented:
 
 - `(owner_id, archived_at, updated_at)`
 - `(owner_id, status)`
