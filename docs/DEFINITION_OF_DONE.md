@@ -5,10 +5,12 @@ A V1 release is complete only when the same exact release commit satisfies the a
 ## Product
 
 - [x] Register/login/logout/me flow works.
-- [ ] Authenticated user can create, read and edit an opportunity.
+- [x] Authenticated user can create, read and edit an opportunity.
 - [ ] Status changes append visible history.
 - [ ] Archive/restore works without losing history.
+  - Archive/restore behavior works now; event-history retention is added with the workflow/history step.
 - [ ] Permanent delete removes the opportunity and dependent events.
+  - Opportunity deletion works now; dependent event deletion is verified after events exist.
 - [ ] Search and V1 filters work together predictably.
 - [ ] Dashboard shows due soon, overdue, active-status counts and recent activity.
 - [ ] Next action is visible in list/detail/dashboard where relevant.
@@ -16,14 +18,15 @@ A V1 release is complete only when the same exact release commit satisfies the a
 
 ## Security and privacy
 
-- [ ] Every private resource is server-side owner scoped.
-- [ ] Foreign opportunity UUIDs return `404` on reads and mutations.
+- [x] Every implemented opportunity resource is server-side owner scoped.
+- [x] Foreign opportunity UUIDs return `404` on reads and mutations.
 - [x] Authentication endpoints are rate limited.
 - [ ] Session/CSRF behavior is fully tested at the browser boundary.
-  - Session rotation, logout invalidation and Sanctum CSRF-cookie bootstrap are covered now. Laravel intentionally bypasses CSRF verification during ordinary PHPUnit requests, so browser-level rejection evidence remains open rather than being inferred.
+  - Session rotation, logout invalidation and Sanctum CSRF-cookie bootstrap are covered. Browser-level rejection evidence remains open.
 - [x] CORS does not allow an unconfigured origin to become an allowed origin.
-- [ ] URL scheme validation rejects non-HTTP(S) values.
+- [x] URL scheme validation rejects non-HTTP(S) values.
 - [ ] User-authored notes are rendered as text, not HTML.
+  - Backend accepts bounded string notes; frontend rendering evidence is still required.
 - [ ] Logs/tests/demos contain no secrets or real personal application data.
 
 ## Frontend
@@ -39,7 +42,7 @@ A V1 release is complete only when the same exact release commit satisfies the a
 - [ ] Database migrations and rollback path are reviewed for the full V1 schema.
 - [x] Useful owner/status/deadline indexes exist on the opportunity persistence boundary.
 - [ ] Pagination and allowlisted filtering are covered by tests.
-- [x] Stable identity error envelope is documented and exercised.
+- [x] Stable identity/resource error envelopes are documented and exercised.
 - [ ] OpenAPI matches implemented V1 routes and schemas.
 
 ## Automated evidence

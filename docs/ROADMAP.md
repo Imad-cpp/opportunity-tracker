@@ -12,9 +12,9 @@ Monorepo structure, Next.js web, Laravel API, PostgreSQL, Docker/local environme
 
 Sanctum first-party session authentication, UUID accounts, CSRF bootstrap/session behavior, account time zone validation, authentication rate limits and owner-scoped persistence tests.
 
-## 4. Opportunity CRUD
+## 4. Opportunity CRUD ✅
 
-Create/read/update, validation, URL rules, archive/restore and permanent delete.
+Authenticated create/read/update, strict editable-field validation, HTTP(S) source URL rules, owner-scoped lookup, archive/restore and permanent delete.
 
 ## 5. Workflow and history
 

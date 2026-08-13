@@ -23,3 +23,7 @@ All meaningful project changes are recorded here.
 - Added explicit browser-origin/session configuration and bounded account-request limits.
 - Added the UUID owner-linked opportunity persistence boundary and owner-scope tests ahead of CRUD.
 - Replaced generated placeholder API tests with synthetic identity and ownership coverage.
+- Added authenticated opportunity create, list, detail, update, archive, restore and delete endpoints.
+- Added type, priority, source URL and bounded text validation for ordinary opportunity edits.
+- Added stable missing-resource behavior across opportunity reads and mutations.
+- Kept status, deadline and next-action changes outside ordinary CRUD for their dedicated roadmap steps.

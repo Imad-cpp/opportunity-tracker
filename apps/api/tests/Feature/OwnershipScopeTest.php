@@ -31,8 +31,7 @@ class OwnershipScopeTest extends TestCase
 
     private function opportunity(User $owner, string $title): Opportunity
     {
-        return Opportunity::query()->create([
-            'owner_id' => $owner->getKey(),
+        return $owner->opportunities()->create([
             'type' => 'INTERNSHIP',
             'status' => 'SAVED',
             'priority' => 'MEDIUM',
