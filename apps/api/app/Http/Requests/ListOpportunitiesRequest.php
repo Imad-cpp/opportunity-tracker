@@ -8,7 +8,10 @@ use Illuminate\Validation\Validator;
 
 class ListOpportunitiesRequest extends FormRequest
 {
-    public function authorize(): bool { return true; }
+    public function authorize(): bool
+    {
+        return true;
+    }
 
     public function rules(): array
     {
@@ -27,9 +30,14 @@ class ListOpportunitiesRequest extends FormRequest
     protected function prepareForValidation(): void
     {
         $input = $this->all();
-        if (isset($input['q']) && is_string($input['q'])) { $input['q'] = trim($input['q']); }
-        if (($input['archived'] ?? null) === 'true') { $input['archived'] = true; }
-        elseif (($input['archived'] ?? null) === 'false') { $input['archived'] = false; }
+        if (isset($input['q']) && is_string($input['q'])) {
+            $input['q'] = trim($input['q']);
+        }
+        if (($input['archived'] ?? null) === 'true') {
+            $input['archived'] = true;
+        } elseif (($input['archived'] ?? null) === 'false') {
+            $input['archived'] = false;
+        }
         $this->merge($input);
     }
 

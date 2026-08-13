@@ -10,7 +10,10 @@ use Illuminate\Validation\Validator;
 
 class UpdateOpportunityRequest extends FormRequest
 {
-    public function authorize(): bool { return true; }
+    public function authorize(): bool
+    {
+        return true;
+    }
 
     public function rules(): array
     {
@@ -34,13 +37,18 @@ class UpdateOpportunityRequest extends FormRequest
     protected function prepareForValidation(): void
     {
         $input = $this->all();
-        foreach (['type','priority','title','organization','source_url','location','notes','next_action','next_action_at','deadline_at','deadline_precision','deadline_timezone'] as $key) {
-            if (! array_key_exists($key, $input) || ! is_string($input[$key])) { continue; }
+        foreach (['type', 'priority', 'title', 'organization', 'source_url', 'location', 'notes', 'next_action', 'next_action_at', 'deadline_at', 'deadline_precision', 'deadline_timezone'] as $key) {
+            if (! array_key_exists($key, $input) || ! is_string($input[$key])) {
+                continue;
+            }
             $value = trim($input[$key]);
-            $input[$key] = in_array($key, ['source_url','location','notes','next_action','next_action_at'], true) && $value === '' ? null : $value;
+            $input[$key] = in_array($key, ['source_url', 'location', 'notes', 'next_action', 'next_action_at'], true) && $value === '' ? null : $value;
         }
         $this->merge($input);
     }
 
-    public function withValidator(Validator $validator): void { DeadlineInput::validate($this, $validator); }
+    public function withValidator(Validator $validator): void
+    {
+        DeadlineInput::validate($this, $validator);
+    }
 }

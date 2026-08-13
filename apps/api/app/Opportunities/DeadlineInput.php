@@ -28,6 +28,7 @@ final class DeadlineInput
 
             if (! $hasAt && ($hasPrecision || $hasTimezone)) {
                 $validator->errors()->add('deadline_at', 'deadline_at is required when deadline metadata is supplied.');
+
                 return;
             }
 
@@ -39,6 +40,7 @@ final class DeadlineInput
                 if ($request->input('deadline_precision') !== null || $request->input('deadline_timezone') !== null) {
                     $validator->errors()->add('deadline_at', 'Deadline metadata must be null or omitted when clearing a deadline.');
                 }
+
                 return;
             }
 
@@ -61,23 +63,27 @@ final class DeadlineInput
         if ($validated['deadline_precision'] === 'DATE') {
             $timezone = $user->timezone;
             $deadline = CarbonImmutable::createFromFormat('!Y-m-d', $validated['deadline_at'], $timezone)->endOfDay()->utc();
+
             return ['deadline_at' => $deadline, 'deadline_precision' => 'DATE', 'deadline_timezone' => $timezone];
         }
 
         $timezone = $validated['deadline_timezone'];
         $deadline = CarbonImmutable::createFromFormat('!Y-m-d\\TH:i', $validated['deadline_at'], $timezone)->utc();
+
         return ['deadline_at' => $deadline, 'deadline_precision' => 'DATETIME', 'deadline_timezone' => $timezone];
     }
 
     public static function dateBoundary(string $date, string $timezone, bool $endOfDay): CarbonImmutable
     {
         $boundary = CarbonImmutable::createFromFormat('!Y-m-d', $date, $timezone);
+
         return ($endOfDay ? $boundary->endOfDay() : $boundary->startOfDay())->utc();
     }
 
     public static function withoutRawFields(array $validated): array
     {
         unset($validated['deadline_at'], $validated['deadline_precision'], $validated['deadline_timezone']);
+
         return $validated;
     }
 }
