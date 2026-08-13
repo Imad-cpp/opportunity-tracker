@@ -1,0 +1,76 @@
+name: Bootstrap Application Scaffold V3
+
+on:
+  push:
+    branches:
+      - feat/application-scaffold
+    paths:
+      - .github/workflows/bootstrap-scaffold-v3.yml
+
+permissions:
+  contents: write
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Checkout scaffold branch
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        with:
+          ref: feat/application-scaffold
+
+      - name: Set up Node.js 24 LTS
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: '24'
+
+      - name: Set up PHP 8.4
+        uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240
+        with:
+          php-version: '8.4'
+          extensions: mbstring, pdo_pgsql
+          coverage: none
+          tools: composer:v2
+
+      - name: Run corrected generator and persist failure tail
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 <<'PY'
+          from pathlib import Path
+
+          source = Path('.github/workflows/bootstrap-scaffold.yml').read_text()
+          start_marker = "      - name: Generate monorepo applications\n        shell: bash\n        run: |\n"
+          end_marker = "\n      - name: Commit generated scaffold"
+          block = source.split(start_marker, 1)[1].split(end_marker, 1)[0]
+          lines = [line[10:] if line.startswith('          ') else '' for line in block.splitlines()]
+          script = '\n'.join(lines) + '\n'
+          old = "output.extend(value for prefix, value in replacements.items() if prefix in missing)"
+          new = "output.extend(replacements[prefix] for prefix in replacements if prefix in missing)"
+          if script.count(old) != 1:
+              raise SystemExit('expected env-rewrite typo not found exactly once')
+          Path('/tmp/generate-scaffold.sh').write_text(script.replace(old, new, 1))
+          PY
+
+          set +e
+          bash /tmp/generate-scaffold.sh > >(tee /tmp/scaffold.log) 2>&1
+          code=$?
+          set -e
+
+          if [ "$code" -ne 0 ]; then
+            tail -n 120 /tmp/scaffold.log > .scaffold-diagnostic.txt
+            git config user.name 'github-actions[bot]'
+            git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+            git add .scaffold-diagnostic.txt
+            git commit -m 'chore: capture scaffold validation failure'
+            git push origin HEAD:feat/application-scaffold
+            exit "$code"
+          fi
+
+          rm -f .scaffold-diagnostic.txt
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add . ':!.github/workflows/bootstrap-scaffold.yml' ':!.github/workflows/bootstrap-scaffold-v2.yml' ':!.github/workflows/bootstrap-scaffold-v3.yml'
+          git commit -m 'feat: scaffold opportunity tracker applications'
+          git push origin HEAD:feat/application-scaffold
