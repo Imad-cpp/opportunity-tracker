@@ -2,7 +2,7 @@
 
 Base path: `/api/v1`
 
-All private endpoints are owner-scoped. Foreign resource identifiers must resolve as `404`.
+All private endpoints are owner-scoped. Foreign resource identifiers resolve as `404` rather than leaking existence.
 
 ## Authentication
 
@@ -19,17 +19,17 @@ Sanctum CSRF/session bootstrap uses Laravel's `/sanctum/csrf-cookie` framework e
 
 | Method | Path | Purpose | Status |
 |---|---|---|---|
-| GET | `/opportunities` | List/search/filter owned opportunities | Planned |
-| POST | `/opportunities` | Create opportunity | Planned |
-| GET | `/opportunities/{id}` | Read one owned opportunity | Planned |
-| PATCH | `/opportunities/{id}` | Update editable fields | Planned |
-| DELETE | `/opportunities/{id}` | Permanently delete opportunity | Planned |
+| GET | `/opportunities` | List active owned opportunities | Implemented |
+| POST | `/opportunities` | Create an owned opportunity with server-controlled `SAVED` status | Implemented |
+| GET | `/opportunities/{id}` | Read one owned opportunity, including archived records | Implemented |
+| PATCH | `/opportunities/{id}` | Update ordinary editable fields | Implemented |
+| DELETE | `/opportunities/{id}` | Permanently delete owned opportunity | Implemented |
+| POST | `/opportunities/{id}/archive` | Archive without changing status | Implemented |
+| POST | `/opportunities/{id}/restore` | Restore archived item | Implemented |
 | POST | `/opportunities/{id}/status` | Change status and append event | Planned |
-| POST | `/opportunities/{id}/archive` | Archive without deleting | Planned |
-| POST | `/opportunities/{id}/restore` | Restore archived item | Planned |
 | GET | `/opportunities/{id}/events` | List user-facing activity history | Planned |
 
-The opportunity table/model and reusable owner scope exist, but these public CRUD routes are intentionally deferred to the next roadmap step.
+Ordinary create/update payloads cannot set `owner_id`, `status`, deadline fields, next-action fields or `archived_at`. Ownership is assigned from the authenticated account relationship. Status writes are reserved for the workflow/history step so they can be recorded transactionally.
 
 ## Dashboard
 
@@ -39,7 +39,7 @@ The opportunity table/model and reusable owner scope exist, but these public CRU
 
 ## List query parameters
 
-Planned V1 filters:
+The current list endpoint returns the authenticated owner's non-archived opportunities ordered by most recently updated. Search, pagination and allowlisted filtering are planned for the search/filter step:
 
 - `q` — bounded text search over title and organization
 - `status`
@@ -50,23 +50,23 @@ Planned V1 filters:
 - `deadline_to`
 - `page`
 
-Sorting is server-defined and allowlisted. Arbitrary SQL column/direction input is not accepted.
+Arbitrary SQL column/direction input will not be accepted.
 
 ## Response conventions
 
 Successful object responses use a top-level `data` member. Validation and domain failures use stable machine-readable error codes.
 
-Implemented baseline errors:
+Implemented errors:
 
 - `UNAUTHENTICATED` — 401
+- `NOT_FOUND` — 404 for missing or foreign opportunity identifiers
+- `CSRF_TOKEN_MISMATCH` — 419 when the framework CSRF middleware rejects a state-changing request
 - `VALIDATION_FAILED` — 422
 - `RATE_LIMITED` — 429
-- `CSRF_TOKEN_MISMATCH` — 419 when the framework CSRF middleware rejects a state-changing request
 
-Planned resource/domain errors:
+Planned where applicable:
 
 - `FORBIDDEN` — 403 only for non-resource authorization cases
-- `NOT_FOUND` — 404
-- `DEPENDENCY_UNAVAILABLE` — 503 where applicable
+- `DEPENDENCY_UNAVAILABLE` — 503
 
 Exact schemas will be frozen in OpenAPI before V1 release.
