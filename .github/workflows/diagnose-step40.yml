@@ -1,0 +1,74 @@
+name: Diagnose Step 40
+
+on:
+  push:
+    branches:
+      - chore/step40-diagnostic
+    paths:
+      - .github/workflows/diagnose-step40.yml
+
+permissions:
+  contents: write
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-24.04
+    env:
+      APP_ENV: testing
+      DB_CONNECTION: pgsql
+      DB_HOST: 127.0.0.1
+      DB_PORT: '5432'
+      DB_DATABASE: opportunity_tracker_test
+      DB_USERNAME: opportunity
+      DB_PASSWORD: opportunity_test
+      CACHE_STORE: array
+      SESSION_DRIVER: array
+      QUEUE_CONNECTION: sync
+    services:
+      postgres:
+        image: postgres:18.4-alpine
+        env:
+          POSTGRES_DB: opportunity_tracker_test
+          POSTGRES_USER: opportunity
+          POSTGRES_PASSWORD: opportunity_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U opportunity -d opportunity_tracker_test"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 20
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        with:
+          ref: chore/step40-diagnostic
+      - uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240
+        with:
+          php-version: '8.4'
+          extensions: mbstring, pdo_pgsql
+          coverage: none
+          tools: composer:v2
+      - name: Capture failing test output
+        working-directory: apps/api
+        shell: bash
+        run: |
+          set -euo pipefail
+          composer install --no-interaction --prefer-dist --no-progress
+          cp .env.example .env
+          php artisan key:generate --force
+          php artisan migrate --force
+          set +e
+          php artisan test > ../../step40-test-output.txt 2>&1
+          status=$?
+          set -e
+          printf '\nTEST_EXIT_STATUS=%s\n' "$status" >> ../../step40-test-output.txt
+      - name: Save diagnostics and self-remove
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -f .github/workflows/diagnose-step40.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git commit -m 'chore: capture step 40 test diagnostics'
+          git push origin HEAD:chore/step40-diagnostic
