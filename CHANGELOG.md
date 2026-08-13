@@ -17,3 +17,4 @@ All meaningful project changes are recorded here.
 - Added a minimal API liveness endpoint for stack verification.
 - Recorded stable scaffold/toolchain and baseline-CI decisions.
 - Added a narrowly scoped, time-limited dependency-audit policy for the current stable web framework dependency tree; unexpected findings and version changes remain blocking.
+- Corrected the PostgreSQL 18 Compose volume target to the image's version-aware parent data directory.
