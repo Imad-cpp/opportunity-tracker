@@ -70,8 +70,16 @@ The opportunity model and table established the UUID owner boundary before publi
 
 ## D-018 — Status changes use a dedicated workflow path
 
-Create assigns `SAVED`. Ordinary PATCH does not accept `status`. Status and history move together in the workflow step.
+Create assigns `SAVED`. Ordinary PATCH does not accept `status`. Status and history move together through the dedicated workflow endpoint.
 
 ## D-019 — Ownership is assigned from the authenticated relationship
 
 `owner_id` is not an editable CRUD field. New opportunities are created through the authenticated user's relationship.
+
+## D-020 — Workflow history commits with the mutation
+
+A product-history event and the opportunity mutation it represents are written in one PostgreSQL transaction. Mutating lookups remain owner scoped and take a row lock before state changes.
+
+## D-021 — No-op requests do not manufacture history
+
+History represents product changes rather than request volume. Repeating the same status, archive state, restore state or ordinary field values does not append a duplicate event. `UPDATED` stores sorted changed field names rather than copied user content.
