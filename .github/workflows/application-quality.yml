@@ -1,269 +1,871 @@
-name: Application Quality
+name: Build Identity And Ownership
 
 on:
   push:
     branches:
-      - main
-  pull_request:
+      - feat/identity-ownership
+    paths:
+      - .github/workflows/application-quality.yml
 
 permissions:
-  contents: read
-
-concurrency:
-  group: application-quality-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  contents: write
 
 jobs:
-  docs-quality:
-    name: Docs quality
+  build-identity:
     runs-on: ubuntu-24.04
+    timeout-minutes: 15
     steps:
-      - name: Checkout
+      - name: Checkout identity branch
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
-      - name: Validate project documentation
-        run: python3 scripts/check-docs.py
-
-  web-quality:
-    name: Web quality
-    runs-on: ubuntu-24.04
-    defaults:
-      run:
-        working-directory: apps/web
-    steps:
-      - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
-      - name: Set up Node.js 24 LTS
-        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
         with:
-          node-version: '24'
-          cache: npm
-          cache-dependency-path: apps/web/package-lock.json
-      - name: Install locked dependencies
-        run: npm ci
-      - name: Lint
-        run: npm run lint
-      - name: Typecheck
-        run: npm run typecheck
-      - name: Build
-        run: npm run build
-      - name: Audit production dependencies
-        shell: bash
-        run: |
-          set +e
-          npm audit --omit=dev --audit-level=high --json > /tmp/npm-audit.json
-          audit_status=$?
-          set -e
-
-          if [ "${audit_status}" -eq 0 ]; then
-            echo 'NPM_AUDIT=PASS'
-            exit 0
-          fi
-
-          python3 - <<'PY'
-          import datetime as dt
-          import json
-          import re
-          from pathlib import Path
-
-          expires_on = dt.date.fromisoformat('2026-08-27')
-          if dt.date.today() > expires_on:
-              raise SystemExit('temporary npm audit exception expired on 2026-08-27')
-
-          audit = json.loads(Path('/tmp/npm-audit.json').read_text(encoding='utf-8'))
-          lock = json.loads(Path('package-lock.json').read_text(encoding='utf-8'))
-
-          expected_versions = {
-              'next': '16.2.11',
-              'postcss': '8.4.31',
-              'sharp': '0.34.5',
-          }
-          expected_advisories = {
-              'postcss': {
-                  'GHSA-6g55-p6wh-862q',
-                  'GHSA-fxqj-rqcc-2cmp',
-                  'GHSA-qx2v-qp2m-jg93',
-                  'GHSA-r28c-9q8g-f849',
-              },
-              'sharp': {'GHSA-f88m-g3jw-g9cj'},
-          }
-          expected_next_via = {'postcss', 'sharp'}
-
-          vulnerabilities = audit.get('vulnerabilities')
-          if not isinstance(vulnerabilities, dict):
-              raise SystemExit('npm audit did not return the expected vulnerability object')
-
-          gated = {
-              name: details
-              for name, details in vulnerabilities.items()
-              if details.get('severity') in {'high', 'critical'}
-          }
-
-          if set(gated) != set(expected_versions):
-              raise SystemExit(
-                  f'unexpected high/critical npm vulnerabilities: {sorted(gated)}'
-              )
-
-          for package, details in gated.items():
-              if details.get('severity') == 'critical':
-                  raise SystemExit(f'critical vulnerability is never excepted: {package}')
-
-              lock_entry = lock.get('packages', {}).get(f'node_modules/{package}', {})
-              actual_version = lock_entry.get('version')
-              if actual_version != expected_versions[package]:
-                  raise SystemExit(
-                      f'{package} resolved version changed: expected '
-                      f'{expected_versions[package]}, got {actual_version}'
-                  )
-
-              advisory_ids = set()
-              via_packages = set()
-              for item in details.get('via', []):
-                  if isinstance(item, str):
-                      via_packages.add(item)
-                      continue
-                  if not isinstance(item, dict):
-                      raise SystemExit(f'unexpected npm audit via entry for {package}')
-                  match = re.search(r'GHSA-[0-9a-z-]+', item.get('url', ''))
-                  if match is None:
-                      raise SystemExit(f'unidentified advisory for {package}')
-                  advisory_ids.add(match.group(0))
-
-              if package == 'next':
-                  if advisory_ids or via_packages != expected_next_via:
-                      raise SystemExit(
-                          f'Next.js advisory chain changed: '
-                          f'advisories={sorted(advisory_ids)}, via={sorted(via_packages)}'
-                      )
-              else:
-                  if via_packages:
-                      raise SystemExit(
-                          f'unexpected transitive advisory chain for {package}: '
-                          f'{sorted(via_packages)}'
-                      )
-                  if advisory_ids != expected_advisories[package]:
-                      raise SystemExit(
-                          f'{package} advisory set changed: {sorted(advisory_ids)}'
-                      )
-
-          print('NPM_AUDIT=PASS_WITH_BOUNDED_UPSTREAM_EXCEPTION')
-          print('NPM_AUDIT_EXCEPTION_EXPIRES=2026-08-27')
-          PY
-
-  api-quality:
-    name: API quality
-    runs-on: ubuntu-24.04
-    defaults:
-      run:
-        working-directory: apps/api
-    env:
-      APP_ENV: testing
-      DB_CONNECTION: pgsql
-      DB_HOST: 127.0.0.1
-      DB_PORT: '5432'
-      DB_DATABASE: opportunity_tracker_test
-      DB_USERNAME: opportunity
-      DB_PASSWORD: opportunity_test
-      CACHE_STORE: array
-      SESSION_DRIVER: array
-      QUEUE_CONNECTION: sync
-    services:
-      postgres:
-        image: postgres:18.4-alpine
-        env:
-          POSTGRES_DB: opportunity_tracker_test
-          POSTGRES_USER: opportunity
-          POSTGRES_PASSWORD: opportunity_test
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U opportunity -d opportunity_tracker_test"
-          --health-interval 5s
-          --health-timeout 3s
-          --health-retries 20
-    steps:
-      - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+          ref: feat/identity-ownership
       - name: Set up PHP 8.4
         uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240
         with:
           php-version: '8.4'
-          extensions: mbstring, pdo_pgsql
+          extensions: mbstring, pdo_sqlite, pdo_pgsql
           coverage: none
           tools: composer:v2
-      - name: Validate Composer manifest and lock
-        run: composer validate --strict
       - name: Install locked dependencies
+        working-directory: apps/api
         run: composer install --no-interaction --prefer-dist --no-progress
-      - name: Prepare test environment
-        run: |
-          cp .env.example .env
-          php artisan key:generate --force
-      - name: Migrate PostgreSQL
-        run: php artisan migrate --force
-      - name: Check code style
-        run: vendor/bin/pint --test
-      - name: Run tests against PostgreSQL
-        run: php artisan test
-      - name: Audit Composer dependencies
-        run: composer audit --no-interaction
-
-  stack-smoke:
-    name: Docker stack smoke
-    needs:
-      - docs-quality
-      - web-quality
-      - api-quality
-    runs-on: ubuntu-24.04
-    steps:
-      - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
-      - name: Validate Compose configuration
-        run: docker compose config --quiet
-      - name: Build and start stack
-        run: docker compose up --build --detach
-      - name: Run database migrations in container
-        run: docker compose exec -T api php artisan migrate --force
-      - name: Verify API and web surfaces
+      - name: Write identity and ownership implementation
         shell: bash
         run: |
           set -euo pipefail
-
-          for attempt in $(seq 1 30); do
-            if curl --fail --silent --show-error http://127.0.0.1:8000/api/v1/health/live > /tmp/api-health.json; then
-              break
-            fi
-            if [ "$attempt" -eq 30 ]; then
-              docker compose ps
-              docker compose logs --no-color api
-              exit 1
-            fi
-            sleep 2
-          done
-
-          python3 - <<'PY'
-          import json
+          python3 <<'PY'
           from pathlib import Path
-          payload = json.loads(Path('/tmp/api-health.json').read_text())
-          assert payload == {'status': 'ok'}, payload
+
+          files = {
+          'apps/api/app/Models/User.php': r'''<?php
+
+          namespace App\Models;
+
+          use Database\Factories\UserFactory;
+          use Illuminate\Database\Eloquent\Attributes\Fillable;
+          use Illuminate\Database\Eloquent\Attributes\Hidden;
+          use Illuminate\Database\Eloquent\Concerns\HasUuids;
+          use Illuminate\Database\Eloquent\Factories\HasFactory;
+          use Illuminate\Database\Eloquent\Relations\HasMany;
+          use Illuminate\Foundation\Auth\User as Authenticatable;
+          use Illuminate\Notifications\Notifiable;
+
+          #[Fillable(['name', 'email', 'password', 'timezone'])]
+          #[Hidden(['password', 'remember_token'])]
+          class User extends Authenticatable
+          {
+              /** @use HasFactory<UserFactory> */
+              use HasFactory, HasUuids, Notifiable;
+
+              /** @return HasMany<Opportunity, $this> */
+              public function opportunities(): HasMany
+              {
+                  return $this->hasMany(Opportunity::class, 'owner_id');
+              }
+
+              /** @return array<string, string> */
+              protected function casts(): array
+              {
+                  return [
+                      'email_verified_at' => 'datetime',
+                      'password' => 'hashed',
+                  ];
+              }
+          }
+          ''',
+          'apps/api/app/Models/Opportunity.php': r'''<?php
+
+          namespace App\Models;
+
+          use Illuminate\Database\Eloquent\Attributes\Fillable;
+          use Illuminate\Database\Eloquent\Builder;
+          use Illuminate\Database\Eloquent\Concerns\HasUuids;
+          use Illuminate\Database\Eloquent\Model;
+          use Illuminate\Database\Eloquent\Relations\BelongsTo;
+
+          #[Fillable([
+              'owner_id',
+              'type',
+              'status',
+              'priority',
+              'title',
+              'organization',
+              'source_url',
+              'location',
+              'notes',
+              'deadline_at',
+              'deadline_precision',
+              'deadline_timezone',
+              'next_action',
+              'next_action_at',
+              'archived_at',
+          ])]
+          class Opportunity extends Model
+          {
+              use HasUuids;
+
+              /** @return BelongsTo<User, $this> */
+              public function owner(): BelongsTo
+              {
+                  return $this->belongsTo(User::class, 'owner_id');
+              }
+
+              /** @param Builder<Opportunity> $query */
+              public function scopeOwnedBy(Builder $query, User $owner): Builder
+              {
+                  return $query->where('owner_id', $owner->getKey());
+              }
+
+              /** @return array<string, string> */
+              protected function casts(): array
+              {
+                  return [
+                      'deadline_at' => 'datetime',
+                      'next_action_at' => 'datetime',
+                      'archived_at' => 'datetime',
+                  ];
+              }
+          }
+          ''',
+          'apps/api/app/Rules/IanaTimezone.php': r'''<?php
+
+          namespace App\Rules;
+
+          use Closure;
+          use DateTimeZone;
+          use Illuminate\Contracts\Validation\ValidationRule;
+
+          class IanaTimezone implements ValidationRule
+          {
+              public function validate(string $attribute, mixed $value, Closure $fail): void
+              {
+                  if (! is_string($value)) {
+                      $fail('The :attribute field must be a valid IANA time zone.');
+                      return;
+                  }
+
+                  $identifiers = array_merge(['UTC'], DateTimeZone::listIdentifiers());
+
+                  if (! in_array($value, $identifiers, true)) {
+                      $fail('The :attribute field must be a valid IANA time zone.');
+                  }
+              }
+          }
+          ''',
+          'apps/api/app/Http/Requests/RegisterRequest.php': r'''<?php
+
+          namespace App\Http\Requests;
+
+          use App\Models\User;
+          use App\Rules\IanaTimezone;
+          use Illuminate\Foundation\Http\FormRequest;
+          use Illuminate\Validation\Rule;
+          use Illuminate\Validation\Rules\Password;
+          use Illuminate\Support\Str;
+
+          class RegisterRequest extends FormRequest
+          {
+              public function authorize(): bool
+              {
+                  return true;
+              }
+
+              /** @return array<string, mixed> */
+              public function rules(): array
+              {
+                  return [
+                      'name' => ['required', 'string', 'max:120'],
+                      'email' => ['required', 'string', 'email:rfc', 'max:254', Rule::unique(User::class, 'email')],
+                      'password' => ['required', 'string', Password::min(12)->mixedCase()->numbers()->symbols()],
+                      'timezone' => ['required', 'string', 'max:64', new IanaTimezone],
+                  ];
+              }
+
+              protected function prepareForValidation(): void
+              {
+                  $email = $this->input('email');
+                  $name = $this->input('name');
+                  $timezone = $this->input('timezone');
+
+                  $this->merge([
+                      'email' => is_string($email) ? Str::lower(trim($email)) : $email,
+                      'name' => is_string($name) ? trim($name) : $name,
+                      'timezone' => is_string($timezone) ? trim($timezone) : $timezone,
+                  ]);
+              }
+          }
+          ''',
+          'apps/api/app/Http/Requests/LoginRequest.php': r'''<?php
+
+          namespace App\Http\Requests;
+
+          use Illuminate\Foundation\Http\FormRequest;
+          use Illuminate\Support\Str;
+
+          class LoginRequest extends FormRequest
+          {
+              public function authorize(): bool
+              {
+                  return true;
+              }
+
+              /** @return array<string, mixed> */
+              public function rules(): array
+              {
+                  return [
+                      'email' => ['required', 'string', 'email:rfc', 'max:254'],
+                      'password' => ['required', 'string'],
+                  ];
+              }
+
+              protected function prepareForValidation(): void
+              {
+                  $email = $this->input('email');
+
+                  $this->merge([
+                      'email' => is_string($email) ? Str::lower(trim($email)) : $email,
+                  ]);
+              }
+          }
+          ''',
+          'apps/api/app/Http/Controllers/Api/V1/Auth/RegisterController.php': r'''<?php
+
+          namespace App\Http\Controllers\Api\V1\Auth;
+
+          use App\Http\Controllers\Controller;
+          use App\Http\Requests\RegisterRequest;
+          use App\Models\User;
+          use Illuminate\Http\JsonResponse;
+          use Illuminate\Support\Facades\Auth;
+
+          class RegisterController extends Controller
+          {
+              public function __invoke(RegisterRequest $request): JsonResponse
+              {
+                  $user = User::query()->create($request->validated());
+
+                  Auth::guard('web')->login($user);
+                  $request->session()->regenerate();
+
+                  return response()->json([
+                      'data' => $this->payload($user),
+                  ], 201);
+              }
+
+              /** @return array{id: string, name: string, email: string, timezone: string} */
+              private function payload(User $user): array
+              {
+                  return [
+                      'id' => (string) $user->getKey(),
+                      'name' => $user->name,
+                      'email' => $user->email,
+                      'timezone' => $user->timezone,
+                  ];
+              }
+          }
+          ''',
+          'apps/api/app/Http/Controllers/Api/V1/Auth/LoginController.php': r'''<?php
+
+          namespace App\Http\Controllers\Api\V1\Auth;
+
+          use App\Http\Controllers\Controller;
+          use App\Http\Requests\LoginRequest;
+          use App\Models\User;
+          use Illuminate\Http\JsonResponse;
+          use Illuminate\Support\Facades\Auth;
+          use Illuminate\Support\Facades\RateLimiter;
+
+          class LoginController extends Controller
+          {
+              public function __invoke(LoginRequest $request): JsonResponse
+              {
+                  $credentials = $request->validated();
+                  $key = $this->rateLimitKey($credentials['email'], $request->ip());
+
+                  if (RateLimiter::tooManyAttempts($key, 5)) {
+                      $retryAfter = RateLimiter::availableIn($key);
+
+                      return response()->json([
+                          'error' => [
+                              'code' => 'RATE_LIMITED',
+                              'message' => 'Too many login attempts. Try again later.',
+                          ],
+                      ], 429, ['Retry-After' => (string) $retryAfter]);
+                  }
+
+                  if (! Auth::guard('web')->attempt([
+                      'email' => $credentials['email'],
+                      'password' => $credentials['password'],
+                  ])) {
+                      RateLimiter::hit($key, 60);
+
+                      return response()->json([
+                          'error' => [
+                              'code' => 'INVALID_CREDENTIALS',
+                              'message' => 'The provided credentials are invalid.',
+                          ],
+                      ], 422);
+                  }
+
+                  RateLimiter::clear($key);
+                  $request->session()->regenerate();
+
+                  /** @var User $user */
+                  $user = Auth::guard('web')->user();
+
+                  return response()->json([
+                      'data' => [
+                          'id' => (string) $user->getKey(),
+                          'name' => $user->name,
+                          'email' => $user->email,
+                          'timezone' => $user->timezone,
+                      ],
+                  ]);
+              }
+
+              private function rateLimitKey(string $email, ?string $ip): string
+              {
+                  return 'login:'.hash('sha256', $email).'|'.($ip ?? 'unknown');
+              }
+          }
+          ''',
+          'apps/api/app/Http/Controllers/Api/V1/Auth/LogoutController.php': r'''<?php
+
+          namespace App\Http\Controllers\Api\V1\Auth;
+
+          use App\Http\Controllers\Controller;
+          use Illuminate\Http\Request;
+          use Illuminate\Http\Response;
+          use Illuminate\Support\Facades\Auth;
+
+          class LogoutController extends Controller
+          {
+              public function __invoke(Request $request): Response
+              {
+                  Auth::guard('web')->logout();
+                  $request->session()->invalidate();
+                  $request->session()->regenerateToken();
+
+                  return response()->noContent();
+              }
+          }
+          ''',
+          'apps/api/app/Http/Controllers/Api/V1/MeController.php': r'''<?php
+
+          namespace App\Http\Controllers\Api\V1;
+
+          use App\Http\Controllers\Controller;
+          use App\Models\User;
+          use Illuminate\Http\JsonResponse;
+          use Illuminate\Http\Request;
+
+          class MeController extends Controller
+          {
+              public function __invoke(Request $request): JsonResponse
+              {
+                  /** @var User $user */
+                  $user = $request->user('web');
+
+                  return response()->json([
+                      'data' => [
+                          'id' => (string) $user->getKey(),
+                          'name' => $user->name,
+                          'email' => $user->email,
+                          'timezone' => $user->timezone,
+                      ],
+                  ]);
+              }
+          }
+          ''',
+          'apps/api/config/cors.php': r'''<?php
+
+          $origins = array_values(array_filter(array_map(
+              static fn (string $origin): string => trim($origin),
+              explode(',', (string) env('CORS_ALLOWED_ORIGINS', '')),
+          )));
+
+          return [
+              'paths' => ['api/*', 'sanctum/csrf-cookie'],
+              'allowed_methods' => ['*'],
+              'allowed_origins' => $origins,
+              'allowed_origins_patterns' => [],
+              'allowed_headers' => ['Accept', 'Content-Type', 'X-Requested-With', 'X-XSRF-TOKEN'],
+              'exposed_headers' => [],
+              'max_age' => 0,
+              'supports_credentials' => true,
+          ];
+          ''',
+          'apps/api/database/migrations/0001_01_01_000000_create_users_table.php': r'''<?php
+
+          use Illuminate\Database\Migrations\Migration;
+          use Illuminate\Database\Schema\Blueprint;
+          use Illuminate\Support\Facades\Schema;
+
+          return new class extends Migration
+          {
+              public function up(): void
+              {
+                  Schema::create('users', function (Blueprint $table) {
+                      $table->uuid('id')->primary();
+                      $table->string('name', 120);
+                      $table->string('email', 254)->unique();
+                      $table->timestamp('email_verified_at')->nullable();
+                      $table->string('password');
+                      $table->string('timezone', 64);
+                      $table->rememberToken();
+                      $table->timestamps();
+                  });
+
+                  Schema::create('password_reset_tokens', function (Blueprint $table) {
+                      $table->string('email')->primary();
+                      $table->string('token');
+                      $table->timestamp('created_at')->nullable();
+                  });
+
+                  Schema::create('sessions', function (Blueprint $table) {
+                      $table->string('id')->primary();
+                      $table->uuid('user_id')->nullable()->index();
+                      $table->string('ip_address', 45)->nullable();
+                      $table->text('user_agent')->nullable();
+                      $table->longText('payload');
+                      $table->integer('last_activity')->index();
+                  });
+              }
+
+              public function down(): void
+              {
+                  Schema::dropIfExists('users');
+                  Schema::dropIfExists('password_reset_tokens');
+                  Schema::dropIfExists('sessions');
+              }
+          };
+          ''',
+          'apps/api/database/migrations/2026_08_13_000001_create_opportunities_table.php': r'''<?php
+
+          use Illuminate\Database\Migrations\Migration;
+          use Illuminate\Database\Schema\Blueprint;
+          use Illuminate\Support\Facades\Schema;
+
+          return new class extends Migration
+          {
+              public function up(): void
+              {
+                  Schema::create('opportunities', function (Blueprint $table) {
+                      $table->uuid('id')->primary();
+                      $table->foreignUuid('owner_id')->constrained('users')->cascadeOnDelete();
+                      $table->string('type', 32);
+                      $table->string('status', 32);
+                      $table->string('priority', 16);
+                      $table->string('title', 200);
+                      $table->string('organization', 200);
+                      $table->string('source_url', 2048)->nullable();
+                      $table->string('location', 200)->nullable();
+                      $table->text('notes')->nullable();
+                      $table->timestampTz('deadline_at')->nullable();
+                      $table->string('deadline_precision', 16)->nullable();
+                      $table->string('deadline_timezone', 64)->nullable();
+                      $table->string('next_action', 500)->nullable();
+                      $table->timestampTz('next_action_at')->nullable();
+                      $table->timestampTz('archived_at')->nullable();
+                      $table->timestampsTz();
+
+                      $table->index(['owner_id', 'archived_at', 'updated_at']);
+                      $table->index(['owner_id', 'status']);
+                      $table->index(['owner_id', 'type']);
+                      $table->index(['owner_id', 'priority']);
+                      $table->index(['owner_id', 'deadline_at']);
+                  });
+              }
+
+              public function down(): void
+              {
+                  Schema::dropIfExists('opportunities');
+              }
+          };
+          ''',
+          'apps/api/database/factories/UserFactory.php': r'''<?php
+
+          namespace Database\Factories;
+
+          use App\Models\User;
+          use Illuminate\Database\Eloquent\Factories\Factory;
+          use Illuminate\Support\Facades\Hash;
+          use Illuminate\Support\Str;
+
+          /** @extends Factory<User> */
+          class UserFactory extends Factory
+          {
+              protected static ?string $password;
+
+              /** @return array<string, mixed> */
+              public function definition(): array
+              {
+                  return [
+                      'name' => fake()->name(),
+                      'email' => fake()->unique()->safeEmail(),
+                      'email_verified_at' => now(),
+                      'password' => static::$password ??= Hash::make('Password!12345'),
+                      'timezone' => 'UTC',
+                      'remember_token' => Str::random(10),
+                  ];
+              }
+
+              public function unverified(): static
+              {
+                  return $this->state(fn (array $attributes) => [
+                      'email_verified_at' => null,
+                  ]);
+              }
+          }
+          ''',
+          'apps/api/bootstrap/app.php': r'''<?php
+
+          use Illuminate\Auth\AuthenticationException;
+          use Illuminate\Foundation\Application;
+          use Illuminate\Foundation\Configuration\Exceptions;
+          use Illuminate\Foundation\Configuration\Middleware;
+          use Illuminate\Http\Exceptions\ThrottleRequestsException;
+          use Illuminate\Http\Request;
+          use Illuminate\Session\TokenMismatchException;
+          use Illuminate\Validation\ValidationException;
+
+          return Application::configure(basePath: dirname(__DIR__))
+              ->withRouting(
+                  web: __DIR__.'/../routes/web.php',
+                  api: __DIR__.'/../routes/api.php',
+                  commands: __DIR__.'/../routes/console.php',
+                  health: '/up',
+              )
+              ->withMiddleware(function (Middleware $middleware): void {
+                  $middleware->statefulApi();
+              })
+              ->withExceptions(function (Exceptions $exceptions): void {
+                  $exceptions->shouldRenderJsonWhen(
+                      fn (Request $request) => $request->is('api/*') || $request->expectsJson(),
+                  );
+
+                  $exceptions->render(function (AuthenticationException $exception, Request $request) {
+                      if (! $request->is('api/*')) {
+                          return null;
+                      }
+
+                      return response()->json([
+                          'error' => [
+                              'code' => 'UNAUTHENTICATED',
+                              'message' => 'Authentication is required.',
+                          ],
+                      ], 401);
+                  });
+
+                  $exceptions->render(function (ValidationException $exception, Request $request) {
+                      if (! $request->is('api/*')) {
+                          return null;
+                      }
+
+                      return response()->json([
+                          'error' => [
+                              'code' => 'VALIDATION_FAILED',
+                              'message' => 'The request data is invalid.',
+                              'details' => $exception->errors(),
+                          ],
+                      ], 422);
+                  });
+
+                  $exceptions->render(function (TokenMismatchException $exception, Request $request) {
+                      if (! $request->is('api/*')) {
+                          return null;
+                      }
+
+                      return response()->json([
+                          'error' => [
+                              'code' => 'CSRF_TOKEN_MISMATCH',
+                              'message' => 'The CSRF token is missing or invalid.',
+                          ],
+                      ], 419);
+                  });
+
+                  $exceptions->render(function (ThrottleRequestsException $exception, Request $request) {
+                      if (! $request->is('api/*')) {
+                          return null;
+                      }
+
+                      return response()->json([
+                          'error' => [
+                              'code' => 'RATE_LIMITED',
+                              'message' => 'Too many requests. Try again later.',
+                          ],
+                      ], 429, $exception->getHeaders());
+                  });
+              })->create();
+          ''',
+          'apps/api/routes/api.php': r'''<?php
+
+          use App\Http\Controllers\Api\V1\Auth\LoginController;
+          use App\Http\Controllers\Api\V1\Auth\LogoutController;
+          use App\Http\Controllers\Api\V1\Auth\RegisterController;
+          use App\Http\Controllers\Api\V1\MeController;
+          use Illuminate\Support\Facades\Route;
+
+          Route::prefix('v1')->group(function (): void {
+              Route::get('/health/live', static fn (): array => ['status' => 'ok']);
+
+              Route::prefix('auth')->group(function (): void {
+                  Route::post('/register', RegisterController::class)->middleware('throttle:5,1');
+                  Route::post('/login', LoginController::class);
+              });
+
+              Route::middleware('auth:web')->group(function (): void {
+                  Route::post('/auth/logout', LogoutController::class);
+                  Route::get('/me', MeController::class);
+              });
+          });
+          ''',
+          'apps/api/tests/Feature/AuthenticationTest.php': r'''<?php
+
+          namespace Tests\Feature;
+
+          use App\Models\User;
+          use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
+          use Illuminate\Foundation\Testing\RefreshDatabase;
+          use Illuminate\Support\Str;
+          use Tests\TestCase;
+
+          class AuthenticationTest extends TestCase
+          {
+              use RefreshDatabase;
+
+              protected function setUp(): void
+              {
+                  parent::setUp();
+
+                  config([
+                      'sanctum.stateful' => ['localhost:3000'],
+                      'cors.allowed_origins' => ['http://localhost:3000'],
+                  ]);
+              }
+
+              public function test_registration_normalizes_identity_and_starts_session(): void
+              {
+                  $this->withoutMiddleware(PreventRequestForgery::class);
+                  $before = session()->getId();
+
+                  $response = $this->spa()->postJson('/api/v1/auth/register', [
+                      'name' => '  Test Student  ',
+                      'email' => '  Student@Example.Test ',
+                      'password' => 'Strong!Password123',
+                      'timezone' => 'Africa/Casablanca',
+                  ]);
+
+                  $response->assertCreated()
+                      ->assertJsonPath('data.name', 'Test Student')
+                      ->assertJsonPath('data.email', 'student@example.test')
+                      ->assertJsonPath('data.timezone', 'Africa/Casablanca');
+
+                  $user = User::query()->firstOrFail();
+                  $this->assertTrue(Str::isUuid((string) $user->getKey()));
+                  $this->assertAuthenticatedAs($user);
+                  $this->assertNotSame($before, session()->getId());
+              }
+
+              public function test_invalid_timezone_uses_stable_validation_error(): void
+              {
+                  $this->withoutMiddleware(PreventRequestForgery::class);
+
+                  $this->spa()->postJson('/api/v1/auth/register', [
+                      'name' => 'Test Student',
+                      'email' => 'student@example.test',
+                      'password' => 'Strong!Password123',
+                      'timezone' => 'Mars/Olympus',
+                  ])->assertUnprocessable()
+                      ->assertJsonPath('error.code', 'VALIDATION_FAILED')
+                      ->assertJsonPath('error.details.timezone.0', 'The timezone field must be a valid IANA time zone.');
+              }
+
+              public function test_login_regenerates_session_and_logout_invalidates_it(): void
+              {
+                  $this->withoutMiddleware(PreventRequestForgery::class);
+                  $user = User::factory()->create([
+                      'email' => 'student@example.test',
+                      'password' => 'Strong!Password123',
+                  ]);
+                  $this->withSession(['marker' => 'before-login']);
+                  $before = session()->getId();
+
+                  $this->spa()->postJson('/api/v1/auth/login', [
+                      'email' => 'Student@Example.Test',
+                      'password' => 'Strong!Password123',
+                  ])->assertOk()
+                      ->assertJsonPath('data.id', (string) $user->getKey());
+
+                  $this->assertAuthenticatedAs($user);
+                  $this->assertNotSame($before, session()->getId());
+
+                  $this->spa()->postJson('/api/v1/auth/logout')->assertNoContent();
+                  $this->assertGuest();
+              }
+
+              public function test_failed_login_attempts_are_rate_limited_without_revealing_account_state(): void
+              {
+                  $this->withoutMiddleware(PreventRequestForgery::class);
+                  User::factory()->create(['email' => 'student@example.test']);
+
+                  for ($attempt = 0; $attempt < 5; $attempt++) {
+                      $this->spa()->postJson('/api/v1/auth/login', [
+                          'email' => 'student@example.test',
+                          'password' => 'Wrong!Password123',
+                      ])->assertUnprocessable()
+                          ->assertJsonPath('error.code', 'INVALID_CREDENTIALS');
+                  }
+
+                  $this->spa()->postJson('/api/v1/auth/login', [
+                      'email' => 'student@example.test',
+                      'password' => 'Wrong!Password123',
+                  ])->assertTooManyRequests()
+                      ->assertJsonPath('error.code', 'RATE_LIMITED');
+              }
+
+              public function test_private_account_endpoint_returns_stable_unauthenticated_error(): void
+              {
+                  $this->spa()->getJson('/api/v1/me')
+                      ->assertUnauthorized()
+                      ->assertJsonPath('error.code', 'UNAUTHENTICATED');
+              }
+
+              public function test_stateful_spa_write_without_csrf_is_rejected(): void
+              {
+                  User::factory()->create(['email' => 'student@example.test']);
+
+                  $this->spa()->postJson('/api/v1/auth/login', [
+                      'email' => 'student@example.test',
+                      'password' => 'Password!12345',
+                  ])->assertStatus(419)
+                      ->assertJsonPath('error.code', 'CSRF_TOKEN_MISMATCH');
+              }
+
+              public function test_sanctum_csrf_bootstrap_issues_xsrf_cookie(): void
+              {
+                  $this->spa()->get('/sanctum/csrf-cookie')
+                      ->assertNoContent()
+                      ->assertCookie('XSRF-TOKEN');
+              }
+
+              public function test_untrusted_origin_is_not_reflected_by_cors(): void
+              {
+                  $response = $this->withHeaders([
+                      'Origin' => 'https://evil.example',
+                      'Accept' => 'application/json',
+                  ])->getJson('/api/v1/health/live');
+
+                  $response->assertOk();
+                  $this->assertFalse($response->headers->has('Access-Control-Allow-Origin'));
+              }
+
+              private function spa(): static
+              {
+                  return $this->withHeaders([
+                      'Origin' => 'http://localhost:3000',
+                      'Referer' => 'http://localhost:3000/',
+                      'Accept' => 'application/json',
+                  ]);
+              }
+          }
+          ''',
+          'apps/api/tests/Feature/OwnershipScopeTest.php': r'''<?php
+
+          namespace Tests\Feature;
+
+          use App\Models\Opportunity;
+          use App\Models\User;
+          use Illuminate\Foundation\Testing\RefreshDatabase;
+          use Tests\TestCase;
+
+          class OwnershipScopeTest extends TestCase
+          {
+              use RefreshDatabase;
+
+              public function test_opportunity_scope_never_returns_another_owners_record(): void
+              {
+                  $owner = User::factory()->create();
+                  $other = User::factory()->create();
+
+                  $owned = $this->opportunity($owner, 'Owned opportunity');
+                  $foreign = $this->opportunity($other, 'Foreign opportunity');
+
+                  $ids = Opportunity::query()
+                      ->ownedBy($owner)
+                      ->pluck('id')
+                      ->all();
+
+                  $this->assertSame([(string) $owned->getKey()], $ids);
+                  $this->assertNotContains((string) $foreign->getKey(), $ids);
+                  $this->assertSame((string) $owner->getKey(), (string) $owned->owner->getKey());
+              }
+
+              private function opportunity(User $owner, string $title): Opportunity
+              {
+                  return Opportunity::query()->create([
+                      'owner_id' => $owner->getKey(),
+                      'type' => 'INTERNSHIP',
+                      'status' => 'SAVED',
+                      'priority' => 'MEDIUM',
+                      'title' => $title,
+                      'organization' => 'Synthetic Organization',
+                  ]);
+              }
+          }
+          ''',
+          }
+
+          for path, content in files.items():
+              target = Path(path)
+              target.parent.mkdir(parents=True, exist_ok=True)
+              cleaned = '\n'.join(
+                  line[10:] if line.startswith('          ') else line
+                  for line in content.splitlines()
+              ).lstrip('\n')
+              target.write_text(cleaned, encoding='utf-8')
+
+          env_path = Path('apps/api/.env.example')
+          env_text = env_path.read_text(encoding='utf-8')
+          marker = 'SESSION_DOMAIN=null\n'
+          addition = (
+              'SESSION_DOMAIN=null\n'
+              'SESSION_SECURE_COOKIE=false\n'
+              'SESSION_SAME_SITE=lax\n'
+              'SANCTUM_STATEFUL_DOMAINS=localhost:3000,127.0.0.1:3000\n'
+              'CORS_ALLOWED_ORIGINS=http://localhost:3000\n'
+          )
+          if marker not in env_text:
+              raise SystemExit('session env marker missing')
+          env_path.write_text(env_text.replace(marker, addition, 1), encoding='utf-8')
+
+          compose_path = Path('compose.yaml')
+          compose = compose_path.read_text(encoding='utf-8')
+          marker = '      APP_URL: http://localhost:8000\n'
+          addition = (
+              marker
+              + '      SANCTUM_STATEFUL_DOMAINS: localhost:3000,127.0.0.1:3000\n'
+              + '      CORS_ALLOWED_ORIGINS: http://localhost:3000\n'
+              + '      SESSION_SECURE_COOKIE: "false"\n'
+              + '      SESSION_SAME_SITE: lax\n'
+          )
+          if marker not in compose:
+              raise SystemExit('compose APP_URL marker missing')
+          compose_path.write_text(compose.replace(marker, addition, 1), encoding='utf-8')
           PY
-
-          for attempt in $(seq 1 30); do
-            if curl --fail --silent --show-error http://127.0.0.1:3000/ > /tmp/web.html; then
-              break
-            fi
-            if [ "$attempt" -eq 30 ]; then
-              docker compose ps
-              docker compose logs --no-color web
-              exit 1
-            fi
-            sleep 2
-          done
-
-          grep -F 'Application workspace scaffold' /tmp/web.html
-          echo 'STACK_SMOKE=PASS'
-      - name: Show service state
-        if: always()
-        run: docker compose ps
-      - name: Tear down stack
-        if: always()
-        run: docker compose down --volumes --remove-orphans
+      - name: Format and validate API
+        working-directory: apps/api
+        run: |
+          set -euo pipefail
+          vendor/bin/pint
+          php artisan test
+          composer validate --strict
+          composer audit --no-interaction
+      - name: Commit identity implementation
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add apps/api compose.yaml
+          git commit -m 'feat: implement session identity and ownership'
+          git push origin HEAD:feat/identity-ownership
