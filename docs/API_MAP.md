@@ -20,16 +20,20 @@ Sanctum CSRF/session bootstrap uses Laravel's `/sanctum/csrf-cookie` framework e
 | Method | Path | Purpose | Status |
 |---|---|---|---|
 | GET | `/opportunities` | List active owned opportunities | Implemented |
-| POST | `/opportunities` | Create an owned opportunity with server-controlled `SAVED` status | Implemented |
+| POST | `/opportunities` | Create an owned opportunity with server-controlled `SAVED` status and a `CREATED` event | Implemented |
 | GET | `/opportunities/{id}` | Read one owned opportunity, including archived records | Implemented |
-| PATCH | `/opportunities/{id}` | Update ordinary editable fields | Implemented |
-| DELETE | `/opportunities/{id}` | Permanently delete owned opportunity | Implemented |
-| POST | `/opportunities/{id}/archive` | Archive without changing status | Implemented |
-| POST | `/opportunities/{id}/restore` | Restore archived item | Implemented |
-| POST | `/opportunities/{id}/status` | Change status and append event | Planned |
-| GET | `/opportunities/{id}/events` | List user-facing activity history | Planned |
+| PATCH | `/opportunities/{id}` | Update ordinary editable fields and append `UPDATED` when values change | Implemented |
+| DELETE | `/opportunities/{id}` | Permanently delete owned opportunity and dependent product history | Implemented |
+| POST | `/opportunities/{id}/archive` | Archive without changing status and append `ARCHIVED` on a real transition | Implemented |
+| POST | `/opportunities/{id}/restore` | Restore archived item and append `RESTORED` on a real transition | Implemented |
+| POST | `/opportunities/{id}/status` | Change status and append `STATUS_CHANGED` with from/to values | Implemented |
+| GET | `/opportunities/{id}/events` | List owned user-facing activity history, newest first | Implemented |
 
-Ordinary create/update payloads cannot set `owner_id`, `status`, deadline fields, next-action fields or `archived_at`. Ownership is assigned from the authenticated account relationship. Status writes are reserved for the workflow/history step so they can be recorded transactionally.
+Ordinary create/update payloads cannot set `owner_id`, `status`, deadline fields or `archived_at`. `next_action` and `next_action_at` are editable ordinary product fields. Ownership is assigned from the authenticated account relationship. Status writes use the dedicated workflow route so the state mutation and history event commit atomically.
+
+Repeated requests that do not change data do not fabricate `UPDATED`, `STATUS_CHANGED`, `ARCHIVED` or `RESTORED` events.
+
+Event responses expose product-history metadata only: event id/type, status from/to values, changed field names and creation time. They do not expose note bodies or the actor identifier.
 
 ## Dashboard
 
