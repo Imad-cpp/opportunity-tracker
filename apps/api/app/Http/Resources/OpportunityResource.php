@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources;
 
+use App\Opportunities\DeadlineAttention;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -22,6 +23,7 @@ class OpportunityResource extends JsonResource
             'deadline_at' => $this->deadline_at?->toISOString(),
             'deadline_precision' => $this->deadline_precision,
             'deadline_timezone' => $this->deadline_timezone,
+            'deadline_attention' => DeadlineAttention::for($this->resource),
             'next_action' => $this->next_action,
             'next_action_at' => $this->next_action_at?->toISOString(),
             'archived_at' => $this->archived_at?->toISOString(),

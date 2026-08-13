@@ -19,7 +19,7 @@ Sanctum CSRF/session bootstrap uses Laravel's `/sanctum/csrf-cookie` framework e
 
 | Method | Path | Purpose | Status |
 |---|---|---|---|
-| GET | `/opportunities` | List active owned opportunities | Implemented |
+| GET | `/opportunities` | List, search, filter and paginate owned opportunities | Implemented |
 | POST | `/opportunities` | Create an owned opportunity with server-controlled `SAVED` status and a `CREATED` event | Implemented |
 | GET | `/opportunities/{id}` | Read one owned opportunity, including archived records | Implemented |
 | PATCH | `/opportunities/{id}` | Update ordinary editable fields and append `UPDATED` when values change | Implemented |
@@ -29,11 +29,11 @@ Sanctum CSRF/session bootstrap uses Laravel's `/sanctum/csrf-cookie` framework e
 | POST | `/opportunities/{id}/status` | Change status and append `STATUS_CHANGED` with from/to values | Implemented |
 | GET | `/opportunities/{id}/events` | List owned user-facing activity history, newest first | Implemented |
 
-Ordinary create/update payloads cannot set `owner_id`, `status`, deadline fields or `archived_at`. `next_action` and `next_action_at` are editable ordinary product fields. Ownership is assigned from the authenticated account relationship. Status writes use the dedicated workflow route so the state mutation and history event commit atomically.
+Ordinary create/update payloads cannot set `owner_id`, `status` or `archived_at`. `next_action` and `next_action_at` are editable ordinary product fields. Deadline input is accepted through the dedicated deadline request fields and normalized server-side without allowing clients to write normalized persistence fields directly. Ownership is assigned from the authenticated account relationship. Status writes use the dedicated workflow route so the state mutation and history event commit atomically.
 
 Repeated requests that do not change data do not fabricate `UPDATED`, `STATUS_CHANGED`, `ARCHIVED` or `RESTORED` events.
 
-Event responses expose product-history metadata only: event id/type, status from/to values, changed field names and creation time. They do not expose note bodies or the actor identifier.
+Opportunity responses expose normalized deadline values together with `deadline_precision`, `deadline_timezone` and derived `deadline_attention`. Event responses expose product-history metadata only: event id/type, status from/to values, changed field names and creation time. They do not expose note bodies or the actor identifier.
 
 ## Dashboard
 
@@ -43,18 +43,18 @@ Event responses expose product-history metadata only: event id/type, status from
 
 ## List query parameters
 
-The current list endpoint returns the authenticated owner's non-archived opportunities ordered by most recently updated. Search, pagination and allowlisted filtering are planned for the search/filter step:
+The list endpoint is implemented with owner scoping first, then allowlisted query behavior. By default it returns non-archived opportunities ordered by `updated_at` descending and then `id` descending, with fixed 20-item pages.
 
-- `q` — bounded text search over title and organization
-- `status`
-- `type`
-- `priority`
-- `archived` — `true` or `false`
-- `deadline_from`
-- `deadline_to`
-- `page`
+- `q` — trimmed text search, maximum 120 characters, over title and organization
+- `status` — one valid lifecycle status
+- `type` — one valid opportunity type
+- `priority` — `LOW`, `MEDIUM` or `HIGH`
+- `archived` — `true` returns archived records; omitted/`false` returns active records
+- `deadline_from` — `YYYY-MM-DD`, interpreted from the account time zone start-of-day boundary
+- `deadline_to` — `YYYY-MM-DD`, interpreted through the account time zone end-of-day boundary and must not precede `deadline_from`
+- `page` — integer page number, minimum 1
 
-Arbitrary SQL column/direction input will not be accepted.
+Arbitrary SQL column/direction input is not accepted.
 
 ## Response conventions
 

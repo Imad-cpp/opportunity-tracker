@@ -205,7 +205,19 @@ jobs:
       - name: Run tests against PostgreSQL
         run: php artisan test
       - name: Audit Composer dependencies
-        run: composer audit --no-interaction
+        shell: bash
+        run: |
+          set +e
+          composer audit --format=json --no-interaction > /tmp/composer-audit.json
+          audit_status=$?
+          set -e
+          {
+            echo '### Composer audit diagnostic'
+            echo '```json'
+            cat /tmp/composer-audit.json
+            echo '```'
+          } >> "${GITHUB_STEP_SUMMARY}"
+          exit "${audit_status}"
 
   stack-smoke:
     name: Docker stack smoke

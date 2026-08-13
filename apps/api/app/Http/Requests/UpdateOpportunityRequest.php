@@ -2,9 +2,11 @@
 
 namespace App\Http\Requests;
 
+use App\Opportunities\DeadlineInput;
 use App\Rules\HttpUrl;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Validator;
 
 class UpdateOpportunityRequest extends FormRequest
 {
@@ -25,11 +27,9 @@ class UpdateOpportunityRequest extends FormRequest
             'notes' => ['sometimes', 'nullable', 'string', 'max:10000'],
             'next_action' => ['sometimes', 'nullable', 'string', 'max:500'],
             'next_action_at' => ['sometimes', 'nullable', 'date'],
+            ...DeadlineInput::rules($this),
             'owner_id' => ['prohibited'],
             'status' => ['prohibited'],
-            'deadline_at' => ['prohibited'],
-            'deadline_precision' => ['prohibited'],
-            'deadline_timezone' => ['prohibited'],
             'archived_at' => ['prohibited'],
         ];
     }
@@ -37,21 +37,18 @@ class UpdateOpportunityRequest extends FormRequest
     protected function prepareForValidation(): void
     {
         $input = $this->all();
-
-        foreach (['type', 'priority', 'title', 'organization', 'source_url', 'location', 'notes', 'next_action'] as $key) {
+        foreach (['type', 'priority', 'title', 'organization', 'source_url', 'location', 'notes', 'next_action', 'next_action_at', 'deadline_at', 'deadline_precision', 'deadline_timezone'] as $key) {
             if (! array_key_exists($key, $input) || ! is_string($input[$key])) {
                 continue;
             }
-
             $value = trim($input[$key]);
-            $input[$key] = in_array($key, ['source_url', 'location', 'notes', 'next_action'], true) && $value === '' ? null : $value;
+            $input[$key] = in_array($key, ['source_url', 'location', 'notes', 'next_action', 'next_action_at'], true) && $value === '' ? null : $value;
         }
-
-        if (array_key_exists('next_action_at', $input) && is_string($input['next_action_at'])) {
-            $value = trim($input['next_action_at']);
-            $input['next_action_at'] = $value === '' ? null : $value;
-        }
-
         $this->merge($input);
+    }
+
+    public function withValidator(Validator $validator): void
+    {
+        DeadlineInput::validate($this, $validator);
     }
 }

@@ -1,34 +1,15 @@
 # Changelog
 
-All meaningful project changes are recorded here.
-
 ## Unreleased
 
 ### Added
 
-- Initial Opportunity Tracker product contract and V1 scope.
-- Architecture, data model, API map and security model.
-- Engineering decisions, Definition of Done and roadmap.
-- MIT license.
-- Documentation quality validation for required files and local Markdown links.
-- Added the `apps/web` Next.js 16.2 application with a committed npm lockfile.
-- Added the `apps/api` Laravel 13 application with a committed Composer lockfile.
-- Added PostgreSQL 18.4 and non-root application Docker runtimes through `compose.yaml`.
-- Added a minimal API liveness endpoint for stack verification.
-- Recorded stable scaffold/toolchain and baseline-CI decisions.
-- Added a narrowly scoped, time-limited dependency-audit policy for the current stable web framework dependency tree; unexpected findings and version changes remain blocking.
-- Corrected the PostgreSQL 18 Compose volume target to the image's version-aware parent data directory.
-- Added first-party account session endpoints for registration, login, logout and current-account reads.
-- Added UUID accounts, normalized email storage and validated account time zones.
-- Added explicit browser-origin/session configuration and bounded account-request limits.
-- Added the UUID owner-linked opportunity persistence boundary and owner-scope tests ahead of CRUD.
-- Replaced generated placeholder API tests with synthetic identity and ownership coverage.
-- Added authenticated opportunity create, list, detail, update, archive, restore and delete endpoints.
-- Added type, priority, source URL and bounded text validation for ordinary opportunity edits.
-- Added stable missing-resource behavior across opportunity reads and mutations.
-- Added editable next-action fields without allowing ordinary PATCH to bypass status workflow.
-- Added append-oriented `CREATED`, `UPDATED`, `STATUS_CHANGED`, `ARCHIVED` and `RESTORED` product history.
-- Added a dedicated status-change endpoint and owner-scoped event-history endpoint.
-- Added transactional row locking so workflow state and corresponding history commit together.
-- Added no-op suppression so repeated status/archive/restore or unchanged PATCH requests do not fabricate events.
-- Added cascade deletion and PostgreSQL-backed tests for opportunity history.
+- Product and engineering foundation for Opportunity Tracker V1.
+- Next.js web, Laravel API, PostgreSQL and Docker scaffold with CI quality gates.
+- First-party session identity and owner-scoped opportunity data.
+- Opportunity CRUD, archive/restore, status workflow, next actions and activity history.
+- Search across title and organization with allowlisted filters and 20-item pagination.
+- Date-only and exact deadline semantics with time-zone-aware boundaries.
+- Derived overdue, due-soon and upcoming attention states.
+- Focused PostgreSQL-backed tests for search, filters, pagination and deadline behavior.
+- CI diagnostics for dependency-audit failures.
