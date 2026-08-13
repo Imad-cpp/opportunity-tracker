@@ -81,9 +81,9 @@ The repository is a monorepo. The web client and API stay separate at the applic
 
 ## Status
 
-**Owner-scoped opportunity CRUD implemented.** The repository now has first-party session identity plus authenticated create/read/update/archive/restore/delete flows. Opportunity ownership is assigned through the authenticated account relationship, foreign UUIDs return a stable `404`, source URLs are restricted to HTTP(S), and workflow-owned fields cannot be changed through ordinary CRUD payloads.
+**Owner-scoped workflow history implemented.** The API now records `CREATED`, `UPDATED`, `STATUS_CHANGED`, `ARCHIVED` and `RESTORED` events transactionally with the corresponding opportunity mutation. Status has a dedicated route, next-action fields are editable, history reads inherit the owner boundary, and repeated no-op requests do not fabricate events.
 
-Status changes with append-oriented history are the next roadmap step. Deadline normalization, search/filtering and dashboard workflows remain intentionally deferred.
+Identity, CRUD and workflow/history are complete roadmap slices. Search, pagination, deadline precision/derivation and dashboard product surfaces remain intentionally deferred to the next steps.
 
 V1 uses Sanctum for first-party cookie/session authentication only; it does not issue personal access tokens.
 

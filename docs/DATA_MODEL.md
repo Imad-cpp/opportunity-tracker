@@ -4,7 +4,7 @@ All primary identifiers are UUIDs.
 
 ## Implementation status
 
-The `users`, `sessions`, `password_reset_tokens` and `opportunities` tables are implemented. Opportunity CRUD is implemented. `opportunity_events` remains planned.
+The `users`, `sessions`, `password_reset_tokens`, `opportunities` and `opportunity_events` tables are implemented. Opportunity CRUD and workflow/history persistence are implemented.
 
 ## users
 
@@ -39,43 +39,54 @@ Laravel's server-side session table stores the authenticated browser session. It
 - `archived_at` nullable timestamp
 - timestamps
 
-The model exposes `ownedBy(User)`. New records are created through the authenticated user's relationship and `owner_id` is not mass assignable.
+The model exposes `ownedBy(User)` and an `events()` relationship. New records are created through the authenticated user's relationship and `owner_id` is not mass assignable.
 
-### Implemented CRUD behavior
+### Implemented behavior
 
-- Create assigns `SAVED` server-side.
+- Create assigns `SAVED` server-side and appends `CREATED`.
 - `type` and `priority` use fixed allowlists.
 - Title and organization are required, trimmed and bounded.
 - Source URL accepts valid HTTP(S) URLs only.
 - Location and notes are optional bounded strings.
-- Ordinary CRUD does not write status, deadline, next-action or archive fields directly.
-- Archive/restore is separate from status.
+- `next_action` and `next_action_at` can be captured or updated without changing status.
+- Ordinary CRUD cannot write status, deadline or archive fields directly.
+- Status changes use the dedicated workflow route and record old/new status.
+- Archive/restore is separate from status and records only real transitions.
+- No-op ordinary updates and repeated status/archive/restore requests do not append false history.
 - The default list excludes archived records; owned detail reads may inspect them.
 
 ### Deferred field behavior
 
-- Status changes and history: workflow/history step.
-- Next action: workflow/history step.
 - Deadline precision/time-zone normalization: search/deadline step.
 
 ## opportunity_events
 
-**Not implemented yet.** Planned fields:
+Append-oriented user-facing product history is implemented with:
 
 - `id` UUID primary key
-- `opportunity_id` UUID foreign key → opportunities
+- `opportunity_id` UUID foreign key → opportunities, cascade delete
 - `actor_id` UUID foreign key → users
 - `type` enum-like string
 - `from_status` nullable string
 - `to_status` nullable string
-- `changed_fields` nullable JSON array
+- `changed_fields` nullable JSON array of field names
 - `created_at` timestamp
 
-Planned event types: `CREATED`, `UPDATED`, `STATUS_CHANGED`, `ARCHIVED`, `RESTORED`.
+Implemented event types:
+
+- `CREATED`
+- `UPDATED`
+- `STATUS_CHANGED`
+- `ARCHIVED`
+- `RESTORED`
+
+Opportunity state changes and their corresponding history events are written in the same PostgreSQL transaction. Mutating handlers take an owner-scoped row lock before workflow changes.
+
+`UPDATED.changed_fields` stores sorted field names only. It does not duplicate note bodies or before/after content values. The public event resource omits `actor_id`.
 
 ## Delete behavior
 
-Permanent deletion currently removes the owned opportunity row. When events are added, dependent events must be removed with the opportunity.
+Permanent deletion removes the owned opportunity and cascades its dependent `opportunity_events`. V1 therefore does not keep a hidden personal-data tombstone after explicit deletion.
 
 ## Useful indexes
 
@@ -86,7 +97,4 @@ Implemented:
 - `(owner_id, type)`
 - `(owner_id, priority)`
 - `(owner_id, deadline_at)`
-
-Planned with events:
-
 - `(opportunity_id, created_at)`

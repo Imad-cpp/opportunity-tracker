@@ -31,14 +31,14 @@ PostgreSQL
 - Owner-scoped authorization.
 - Opportunity lifecycle and archive/delete behavior.
 - Deadline normalization and derived due/overdue semantics.
-- Event recording.
+- Transactional product-history event recording.
 - Dashboard aggregation.
 
 ### PostgreSQL
 
 PostgreSQL is the only source of truth for V1 application data. No search engine, secondary document database or cache is required for correctness.
 
-The current schema contains UUID-backed users, server-side sessions and the owner-linked opportunity persistence boundary. Opportunity event storage is added with the workflow/history step rather than prematurely.
+The current schema contains UUID-backed users, server-side sessions, owner-linked opportunities and append-oriented opportunity events. State mutations that require product history commit the opportunity change and event in one transaction.
 
 ## Authentication boundary
 
@@ -50,7 +50,15 @@ Local development runs web and API on different ports with an explicit first-par
 
 ## Ownership boundary
 
-`opportunities.owner_id` is a UUID foreign key to the account. The domain model exposes an `ownedBy(User)` query scope before CRUD routes are exposed. Public read/mutation handlers must start from that owner-scoped query so a foreign UUID is indistinguishable from a missing one.
+`opportunities.owner_id` is a UUID foreign key to the account. The domain model exposes an `ownedBy(User)` query scope. Read and mutation handlers start from that owner-scoped query so a foreign UUID is indistinguishable from a missing one.
+
+Workflow mutations additionally use an owner-scoped row lock inside the PostgreSQL transaction. Event history is reached through the already-owned opportunity, so event-list access inherits the same object boundary.
+
+## Workflow/history boundary
+
+Status cannot be changed through ordinary PATCH. The dedicated status endpoint writes the new status and `STATUS_CHANGED` event atomically. Create/update/archive/restore use the same transaction pattern for their corresponding events.
+
+History is intentionally append-oriented but not noisy: requests that produce no product change do not append synthetic events. `UPDATED` records changed field names rather than copied user content.
 
 ## Monorepo principles
 
