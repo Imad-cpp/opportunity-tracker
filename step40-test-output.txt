@@ -1,0 +1,73 @@
+
+  [39;41;1m FAIL [39;49;22m[39m Tests\Unit\DeadlineAttentionTest[39m
+  [31;1m⨯[39;22m[90m [39m[90mattention is derived only for pre application statuses[39m[90m              [39m [90m0.03s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Unit\DeadlineNormalizationTest[39m
+  [32;1m✓[39;22m[90m [39m[90mexact local deadline is normalized to utc[39m[90m                           [39m [90m0.01s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\ArchivedFilterTest[39m
+  [32;1m✓[39;22m[90m [39m[90marchived filter returns owned archived items[39m[90m                        [39m [90m0.29s[39m  
+  [32;1m✓[39;22m[90m [39m[90msearch matches owned title or organization only[39m[90m                     [39m [90m0.03s[39m  
+  [32;1m✓[39;22m[90m [39m[90menum filters are combined and invalid values fail[39m[90m                   [39m [90m0.03s[39m  
+  [32;1m✓[39;22m[90m [39m[90mreversed deadline range is rejected[39m[90m                                 [39m [90m0.02s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\AuthenticationTest[39m
+  [32;1m✓[39;22m[90m [39m[90mregistration normalizes identity and starts session[39m[90m                 [39m [90m0.03s[39m  
+  [32;1m✓[39;22m[90m [39m[90minvalid timezone uses stable validation error[39m[90m                       [39m [90m0.02s[39m  
+  [32;1m✓[39;22m[90m [39m[90mlogin regenerates session and logout invalidates it[39m[90m                 [39m [90m0.03s[39m  
+  [32;1m✓[39;22m[90m [39m[90mfailed login attempts are rate limited without revealing account st[39m[90m…[39m [90m1.03s[39m  
+  [32;1m✓[39;22m[90m [39m[90mprivate account endpoint returns stable unauthenticated error[39m[90m       [39m [90m0.02s[39m  
+  [32;1m✓[39;22m[90m [39m[90msanctum csrf bootstrap issues xsrf cookie[39m[90m                           [39m [90m0.02s[39m  
+  [32;1m✓[39;22m[90m [39m[90muntrusted origin is not reflected by cors[39m[90m                           [39m [90m0.01s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\DeadlineInputTest[39m
+  [32;1m✓[39;22m[90m [39m[90mdate only deadline uses account timezone end of day[39m[90m                 [39m [90m0.03s[39m  
+  [32;1m✓[39;22m[90m [39m[90mdate only deadline rejects client timezone[39m[90m                          [39m [90m0.02s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\ListPaginationTest[39m
+  [32;1m✓[39;22m[90m [39m[90mlist uses fixed twenty item pages[39m[90m                                   [39m [90m0.04s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\OpportunityCrudTest[39m
+  [32;1m✓[39;22m[90m [39m[90mowner can create opportunity with server controlled status[39m[90m          [39m [90m0.03s[39m  
+  [32;1m✓[39;22m[90m [39m[90mcreate rejects protected workflow fields[39m[90m                            [39m [90m0.02s[39m  
+  [32;1m✓[39;22m[90m [39m[90msource url accepts http and https only[39m[90m                              [39m [90m0.02s[39m  
+  [32;1m✓[39;22m[90m [39m[90mdefault list contains only owned active records[39m[90m                     [39m [90m0.03s[39m  
+  [32;1m✓[39;22m[90m [39m[90mforeign resource is not found for reads and mutations[39m[90m               [39m [90m0.03s[39m  
+  [32;1m✓[39;22m[90m [39m[90mowner can update editable fields but not status[39m[90m                     [39m [90m0.03s[39m  
+  [32;1m✓[39;22m[90m [39m[90marchive hides record and restore returns it to default list[39m[90m         [39m [90m0.04s[39m  
+  [32;1m✓[39;22m[90m [39m[90mdelete physically removes owned record[39m[90m                              [39m [90m0.02s[39m  
+  [32;1m✓[39;22m[90m [39m[90mopportunity endpoints require authentication[39m[90m                        [39m [90m0.02s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\OwnershipScopeTest[39m
+  [32;1m✓[39;22m[90m [39m[90mopportunity scope never returns another owners record[39m[90m               [39m [90m0.03s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\WorkflowHistoryTest[39m
+  [32;1m✓[39;22m[90m [39m[90mcreate records created event and next action[39m[90m                        [39m [90m0.03s[39m  
+  [32;1m✓[39;22m[90m [39m[90mupdate records only changed field names and skips noop updates[39m[90m      [39m [90m0.03s[39m  
+  [32;1m✓[39;22m[90m [39m[90mstatus changes record from and to and same status is noop[39m[90m           [39m [90m0.03s[39m  
+  [32;1m✓[39;22m[90m [39m[90marchive and restore events are idempotent[39m[90m                           [39m [90m0.04s[39m  
+  [32;1m✓[39;22m[90m [39m[90mevent history is owner scoped and delete cascades history[39m[90m           [39m [90m0.03s[39m  
+  [31m────────────────────────────────────────────────────────────────────────────[39m  
+  [41;1m FAILED [49;22m [1mTests\Unit\DeadlineAttentionTest[22m [90m>[39m attention is derived on… [41;1m Error [49;22m  
+[39;1m  Call to a member function connection() on null[39;22m
+
+  at [32mvendor/laravel/framework/src/Illuminate/Database/Eloquent/Model.php[39m:[32m2235[39m
+    2231▕      * @return \Illuminate\Database\Connection
+    2232▕      */
+    2233▕     public static function resolveConnection($connection = null)
+    2234▕     {
+  ➜ 2235▕         return static::$resolver->connection($connection);
+    2236▕     }
+    2237▕ 
+    2238▕     /**
+    2239▕      * Get the connection resolver instance.
+
+      [2m+7 vendor frames [22m
+  [33m8   [39m[39;1mtests/Unit/DeadlineAttentionTest.php[39;22m:[39;1m22[39;22m
+
+
+  [90mTests:[39m    [31;1m1 failed[39;22m[90m,[39m[39m [39m[32;1m30 passed[39;22m[90m (151 assertions)[39m
+  [90mDuration:[39m [39m2.16s[39m
+
+
+TEST_EXIT_STATUS=2
