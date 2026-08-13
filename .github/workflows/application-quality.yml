@@ -1,4 +1,4 @@
-name: Build Opportunity CRUD V2
+name: Build Opportunity CRUD V3
 
 on:
   push:
@@ -37,7 +37,6 @@ jobs:
           python3 <<'PY'
           from pathlib import Path
           import subprocess
-          import textwrap
 
           source = subprocess.check_output(
               ['git', 'show', 'a8a6412d06032edd955e1adc740fa80d10f722b3:.github/workflows/application-quality.yml'],
@@ -48,8 +47,9 @@ jobs:
           if source.count(start) != 1 or source.count(end) != 1:
               raise SystemExit('reviewed CRUD generator markers changed unexpectedly')
 
-          script = textwrap.dedent(source.split(start, 1)[1].split(end, 1)[0])
-          Path('/tmp/build-crud.py').write_text(script, encoding='utf-8')
+          raw = source.split(start, 1)[1].split(end, 1)[0]
+          lines = [line[10:] if line.startswith('          ') else line for line in raw.splitlines()]
+          Path('/tmp/build-crud.py').write_text('\n'.join(lines) + '\n', encoding='utf-8')
           PY
           python3 /tmp/build-crud.py
       - name: Format and validate CRUD
