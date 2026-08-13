@@ -16,9 +16,9 @@ Sanctum first-party session authentication, UUID accounts, CSRF bootstrap/sessio
 
 Authenticated create/read/update, strict editable-field validation, HTTP(S) source URL rules, owner-scoped lookup, archive/restore and permanent delete.
 
-## 5. Workflow and history
+## 5. Workflow and history ✅
 
-Status changes, next action and append-oriented opportunity events.
+Transactional status changes, editable next actions and append-oriented `CREATED`, `UPDATED`, `STATUS_CHANGED`, `ARCHIVED` and `RESTORED` opportunity history with owner-scoped reads and no-op suppression.
 
 ## 6. Search, filters and deadlines
 
