@@ -1,4 +1,4 @@
-name: Build Opportunity CRUD V6
+name: Sync CRUD Changelog
 
 on:
   push:
@@ -11,108 +11,42 @@ permissions:
   contents: write
 
 jobs:
-  build-crud:
+  sync:
     runs-on: ubuntu-24.04
-    timeout-minutes: 15
     steps:
-      - name: Checkout CRUD branch
+      - name: Checkout clean CRUD branch
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
         with:
-          ref: feat/opportunity-crud
-          fetch-depth: 0
-      - name: Set up PHP 8.4
-        uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240
-        with:
-          php-version: '8.4'
-          extensions: mbstring, pdo_sqlite, pdo_pgsql
-          coverage: none
-          tools: composer:v2
-      - name: Install locked dependencies
-        working-directory: apps/api
-        run: composer install --no-interaction --prefer-dist --no-progress
-      - name: Execute reviewed CRUD generator
-        shell: bash
-        run: |
-          set -euo pipefail
-          python3 <<'PY'
-          from pathlib import Path
-          import subprocess
-
-          source = subprocess.check_output(
-              ['git', 'show', 'a8a6412d06032edd955e1adc740fa80d10f722b3:.github/workflows/application-quality.yml'],
-              text=True,
-          )
-          start = "          python3 <<'PY'\n"
-          end = "\n          PY\n      - name: Format and validate CRUD"
-          if source.count(start) != 1 or source.count(end) != 1:
-              raise SystemExit('reviewed CRUD generator markers changed unexpectedly')
-
-          raw = source.split(start, 1)[1].split(end, 1)[0]
-          lines = [line[10:] if line.startswith('          ') else line for line in raw.splitlines()]
-          Path('/tmp/build-crud.py').write_text('\n'.join(lines) + '\n', encoding='utf-8')
-          PY
-          python3 /tmp/build-crud.py
-      - name: Apply reviewed regression fixes
+          ref: feat/opportunity-crud-clean
+      - name: Append CRUD changelog entries
         shell: bash
         run: |
           set -euo pipefail
           python3 <<'PY'
           from pathlib import Path
 
-          bootstrap = Path('apps/api/bootstrap/app.php')
-          text = bootstrap.read_text(encoding='utf-8')
-          text = text.replace('use Illuminate\\Database\\Eloquent\\ModelNotFoundException;\n', '')
-          auth_import = 'use Illuminate\\Auth\\AuthenticationException;\n'
-          not_found_import = 'use Symfony\\Component\\HttpKernel\\Exception\\NotFoundHttpException;\n'
-          if not_found_import not in text:
-              if text.count(auth_import) != 1:
-                  raise SystemExit('authentication import marker changed unexpectedly')
-              text = text.replace(auth_import, auth_import + not_found_import, 1)
-
-          auth_handler = '        $exceptions->render(function (AuthenticationException $exception, Request $request) {'
-          stable_handler = (
-              '        $exceptions->render(function (NotFoundHttpException $exception, Request $request) {\n'
-              "            if (! $request->is('api/*')) {\n"
-              '                return null;\n'
-              '            }\n'
-              '\n'
-              '            return response()->json([\n'
-              "                'error' => [\n"
-              "                    'code' => 'NOT_FOUND',\n"
-              "                    'message' => 'The requested resource was not found.',\n"
-              '                ],\n'
-              '            ], 404);\n'
-              '        });\n'
-              '\n'
+          path = Path('CHANGELOG.md')
+          text = path.read_text(encoding='utf-8')
+          marker = '- Replaced generated placeholder API tests with synthetic identity and ownership coverage.\n'
+          addition = (
+              marker
+              + '- Added authenticated opportunity create, list, detail, update, archive, restore and delete endpoints.\n'
+              + '- Added type, priority, source URL and bounded text validation for ordinary opportunity edits.\n'
+              + '- Added stable missing-resource behavior across opportunity reads and mutations.\n'
+              + '- Kept status, deadline and next-action changes outside ordinary CRUD for their dedicated roadmap steps.\n'
           )
-          if 'function (NotFoundHttpException $exception, Request $request)' not in text:
-              if text.count(auth_handler) != 1:
-                  raise SystemExit('authentication handler marker changed unexpectedly')
-              text = text.replace(auth_handler, stable_handler + auth_handler, 1)
-          bootstrap.write_text(text, encoding='utf-8')
-
-          ownership = Path('apps/api/tests/Feature/OwnershipScopeTest.php')
-          text = ownership.read_text(encoding='utf-8')
-          old = "return Opportunity::query()->create([\n            'owner_id' => $owner->getKey(),\n"
-          new = "return $owner->opportunities()->create([\n"
-          if text.count(old) != 1:
-              raise SystemExit('ownership test helper shape changed unexpectedly')
-          ownership.write_text(text.replace(old, new, 1), encoding='utf-8')
+          if text.count(marker) != 1:
+              raise SystemExit('changelog marker changed unexpectedly')
+          if 'Added authenticated opportunity create, list, detail' not in text:
+              text = text.replace(marker, addition, 1)
+          path.write_text(text, encoding='utf-8')
           PY
-      - name: Format and validate CRUD
-        working-directory: apps/api
-        run: |
-          set -euo pipefail
-          cp .env.example .env
-          vendor/bin/pint
-          php artisan test
-          composer validate --strict
-          composer audit --no-interaction
-      - name: Commit CRUD implementation
+          python3 scripts/check-docs.py
+      - name: Commit changelog sync
         run: |
           set -euo pipefail
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add apps/api
-          git commit -m 'feat: implement owner-scoped opportunity CRUD'
-          git push origin HEAD:feat/opportunity-crud
+          git add CHANGELOG.md
+          git commit -m 'docs: add opportunity CRUD changelog'
+          git push origin HEAD:feat/opportunity-crud-clean
