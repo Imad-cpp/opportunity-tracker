@@ -1,0 +1,376 @@
+name: Bootstrap Application Scaffold
+
+on:
+  push:
+    branches:
+      - feat/application-scaffold
+    paths:
+      - .github/workflows/bootstrap-scaffold.yml
+
+permissions:
+  contents: write
+
+jobs:
+  scaffold:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Checkout scaffold branch
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        with:
+          ref: feat/application-scaffold
+
+      - name: Set up Node.js 24 LTS
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: '24'
+
+      - name: Set up PHP 8.4
+        uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240
+        with:
+          php-version: '8.4'
+          extensions: mbstring, pdo_pgsql
+          coverage: none
+          tools: composer:v2
+
+      - name: Generate monorepo applications
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          rm -rf apps
+          mkdir -p apps
+
+          npx --yes create-next-app@16.2.11 apps/web \
+            --typescript \
+            --eslint \
+            --app \
+            --src-dir \
+            --import-alias '@/*' \
+            --use-npm \
+            --no-tailwind \
+            --yes
+
+          composer create-project laravel/laravel:^13.0 apps/api --no-interaction --prefer-dist
+
+          node <<'NODE'
+          const fs = require('fs');
+          const path = 'apps/web/package.json';
+          const pkg = JSON.parse(fs.readFileSync(path, 'utf8'));
+          pkg.engines = { node: '>=24 <25' };
+          pkg.scripts.typecheck = 'tsc --noEmit';
+          fs.writeFileSync(path, JSON.stringify(pkg, null, 2) + '\n');
+          NODE
+
+          (cd apps/web && npm install --package-lock-only --ignore-scripts)
+
+          cat > apps/web/src/app/page.tsx <<'EOF'
+          const stack = ["Next.js 16.2", "TypeScript", "Laravel 13", "PostgreSQL 18"];
+
+          export default function Home() {
+            return (
+              <main className="shell">
+                <section className="panel" aria-labelledby="page-title">
+                  <p className="eyebrow">Opportunity Tracker</p>
+                  <h1 id="page-title">Application workspace scaffold</h1>
+                  <p className="lede">
+                    The web and API boundaries are running. Product workflows are implemented in later roadmap steps.
+                  </p>
+                  <ul className="stack" aria-label="Application stack">
+                    {stack.map((item) => (
+                      <li key={item}>{item}</li>
+                    ))}
+                  </ul>
+                </section>
+              </main>
+            );
+          }
+          EOF
+
+          cat > apps/web/src/app/globals.css <<'EOF'
+          :root {
+            color-scheme: light dark;
+            font-family: Arial, Helvetica, sans-serif;
+            background: Canvas;
+            color: CanvasText;
+          }
+
+          * { box-sizing: border-box; }
+          body { margin: 0; }
+          .shell { min-height: 100vh; display: grid; place-items: center; padding: 2rem; }
+          .panel { width: min(46rem, 100%); border: 1px solid color-mix(in srgb, CanvasText 18%, transparent); border-radius: 1rem; padding: clamp(1.5rem, 4vw, 3rem); }
+          .eyebrow { margin: 0 0 .75rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+          h1 { margin: 0; font-size: clamp(2rem, 6vw, 4rem); line-height: 1.05; }
+          .lede { margin: 1.25rem 0 0; max-width: 42rem; line-height: 1.65; }
+          .stack { display: flex; flex-wrap: wrap; gap: .5rem; padding: 0; margin: 1.5rem 0 0; list-style: none; }
+          .stack li { border: 1px solid color-mix(in srgb, CanvasText 18%, transparent); border-radius: 999px; padding: .45rem .75rem; }
+          EOF
+
+          cat > apps/web/src/app/layout.tsx <<'EOF'
+          import type { Metadata } from "next";
+          import "./globals.css";
+
+          export const metadata: Metadata = {
+            title: "Opportunity Tracker",
+            description: "Personal application tracking workspace.",
+          };
+
+          export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+            return (
+              <html lang="en">
+                <body>{children}</body>
+              </html>
+            );
+          }
+          EOF
+
+          printf '24\n' > apps/web/.nvmrc
+
+          rm -f apps/api/package.json apps/api/package-lock.json apps/api/vite.config.js
+          rm -rf apps/api/resources/css apps/api/resources/js
+
+          python3 <<'PY'
+          from pathlib import Path
+
+          bootstrap = Path('apps/api/bootstrap/app.php')
+          text = bootstrap.read_text()
+          old = "        web: __DIR__.'/../routes/web.php',\n        commands: __DIR__.'/../routes/console.php',"
+          new = "        web: __DIR__.'/../routes/web.php',\n        api: __DIR__.'/../routes/api.php',\n        commands: __DIR__.'/../routes/console.php',"
+          if old not in text:
+              raise SystemExit('Laravel bootstrap routing shape changed unexpectedly')
+          bootstrap.write_text(text.replace(old, new, 1))
+
+          env = Path('apps/api/.env.example')
+          lines = env.read_text().splitlines()
+          replacements = {
+              'APP_NAME=': 'APP_NAME="Opportunity Tracker API"',
+              'APP_URL=': 'APP_URL=http://localhost:8000',
+              'DB_CONNECTION=': 'DB_CONNECTION=pgsql',
+              'DB_HOST=': 'DB_HOST=postgres',
+              'DB_PORT=': 'DB_PORT=5432',
+              'DB_DATABASE=': 'DB_DATABASE=opportunity_tracker',
+              'DB_USERNAME=': 'DB_USERNAME=opportunity',
+              'DB_PASSWORD=': 'DB_PASSWORD=opportunity_local',
+          }
+          seen = set()
+          output = []
+          for line in lines:
+              replaced = False
+              for prefix, value in replacements.items():
+                  if line.startswith(prefix):
+                      output.append(value)
+                      seen.add(prefix)
+                      replaced = True
+                      break
+              if not replaced:
+                  output.append(line)
+          missing = set(replacements) - seen
+          if missing:
+              # Laravel's default may omit host credentials for SQLite. Append the PostgreSQL contract explicitly.
+              output.append('')
+              output.extend(value for prefix, value in replacements.items() if prefix in missing)
+          env.write_text('\n'.join(output).rstrip() + '\n')
+          PY
+
+          cat > apps/api/routes/api.php <<'EOF'
+          <?php
+
+          use Illuminate\Support\Facades\Route;
+
+          Route::prefix('v1')->group(function (): void {
+              Route::get('/health/live', static fn (): array => ['status' => 'ok']);
+          });
+          EOF
+
+          mkdir -p apps/api/docker
+          cat > apps/api/docker/entrypoint.sh <<'EOF'
+          #!/bin/sh
+          set -eu
+
+          if [ -z "${APP_KEY:-}" ]; then
+            APP_KEY="base64:$(php -r 'echo base64_encode(random_bytes(32));')"
+            export APP_KEY
+          fi
+
+          exec "$@"
+          EOF
+          chmod +x apps/api/docker/entrypoint.sh
+
+          cat > apps/api/Dockerfile <<'EOF'
+          FROM composer:2 AS vendor
+          WORKDIR /app
+          COPY . .
+          RUN composer install --no-dev --no-interaction --prefer-dist --no-progress --optimize-autoloader
+
+          FROM php:8.4-cli-alpine
+          RUN apk add --no-cache libpq-dev \
+              && docker-php-ext-install pdo_pgsql \
+              && addgroup -S app \
+              && adduser -S -G app app
+          WORKDIR /app
+          COPY --from=vendor --chown=app:app /app /app
+          COPY --chown=app:app docker/entrypoint.sh /usr/local/bin/app-entrypoint
+          USER app
+          EXPOSE 8000
+          ENTRYPOINT ["app-entrypoint"]
+          CMD ["php", "artisan", "serve", "--host=0.0.0.0", "--port=8000"]
+          EOF
+
+          cat > apps/api/.dockerignore <<'EOF'
+          .git
+          .env
+          vendor
+          node_modules
+          storage/logs/*
+          EOF
+
+          cat > apps/web/Dockerfile <<'EOF'
+          FROM node:24.18.1-alpine AS dependencies
+          WORKDIR /app
+          COPY package.json package-lock.json ./
+          RUN npm ci
+
+          FROM node:24.18.1-alpine AS build
+          WORKDIR /app
+          COPY --from=dependencies /app/node_modules ./node_modules
+          COPY . .
+          RUN npm run build
+
+          FROM node:24.18.1-alpine AS runtime
+          ENV NODE_ENV=production
+          WORKDIR /app
+          COPY --from=build --chown=node:node /app ./
+          USER node
+          EXPOSE 3000
+          CMD ["npm", "run", "start"]
+          EOF
+
+          cat > apps/web/.dockerignore <<'EOF'
+          .git
+          .next
+          node_modules
+          npm-debug.log*
+          .env*
+          EOF
+
+          cat > compose.yaml <<'EOF'
+          services:
+            postgres:
+              image: postgres:18.4-alpine
+              environment:
+                POSTGRES_DB: opportunity_tracker
+                POSTGRES_USER: opportunity
+                POSTGRES_PASSWORD: opportunity_local
+              ports:
+                - "5432:5432"
+              healthcheck:
+                test: ["CMD-SHELL", "pg_isready -U opportunity -d opportunity_tracker"]
+                interval: 5s
+                timeout: 3s
+                retries: 20
+              volumes:
+                - postgres-data:/var/lib/postgresql/data
+
+            api:
+              build:
+                context: ./apps/api
+              environment:
+                APP_ENV: local
+                APP_DEBUG: "true"
+                APP_URL: http://localhost:8000
+                DB_CONNECTION: pgsql
+                DB_HOST: postgres
+                DB_PORT: 5432
+                DB_DATABASE: opportunity_tracker
+                DB_USERNAME: opportunity
+                DB_PASSWORD: opportunity_local
+                CACHE_STORE: database
+                SESSION_DRIVER: database
+                QUEUE_CONNECTION: database
+              ports:
+                - "8000:8000"
+              depends_on:
+                postgres:
+                  condition: service_healthy
+              healthcheck:
+                test: ["CMD", "php", "-r", "$c=@file_get_contents('http://127.0.0.1:8000/api/v1/health/live'); exit($c !== false ? 0 : 1);"]
+                interval: 5s
+                timeout: 3s
+                retries: 20
+
+            web:
+              build:
+                context: ./apps/web
+              environment:
+                NEXT_PUBLIC_API_BASE_URL: http://localhost:8000/api/v1
+              ports:
+                - "3000:3000"
+              depends_on:
+                api:
+                  condition: service_healthy
+
+          volumes:
+            postgres-data:
+          EOF
+
+          cat > .gitignore <<'EOF'
+          .env
+          .DS_Store
+          apps/web/node_modules/
+          apps/web/.next/
+          apps/web/.env*
+          !apps/web/.env.example
+          apps/api/vendor/
+          apps/api/.env
+          apps/api/storage/logs/*.log
+          EOF
+
+          python3 <<'PY'
+          from pathlib import Path
+
+          def replace_once(path: str, old: str, new: str) -> None:
+              p = Path(path)
+              text = p.read_text()
+              if text.count(old) != 1:
+                  raise SystemExit(f'{path}: expected exactly one scaffold status target')
+              p.write_text(text.replace(old, new, 1))
+
+          replace_once(
+              'README.md',
+              '**Foundation in progress.** No application implementation is claimed yet.',
+              '**Application scaffold implemented.** The Next.js web app, Laravel API, PostgreSQL local stack and reproducible dependency locks exist. Identity and opportunity workflows are not implemented yet.',
+          )
+
+          replace_once(
+              'docs/ARCHITECTURE.md',
+              'Docker Compose will provide PostgreSQL and the Laravel API runtime. The Next.js web application may run in Compose or through the local Node toolchain, but CI must prove a reproducible build for both applications.',
+              'Docker Compose provides PostgreSQL 18.4, the Laravel 13 API runtime and the Next.js 16.2 web runtime. Node.js 24 LTS and PHP 8.4 are the scaffold toolchain baselines. Both applications keep committed dependency lockfiles, and CI must prove reproducible installs/builds.',
+          )
+
+          roadmap = Path('docs/ROADMAP.md')
+          text = roadmap.read_text()
+          text = text.replace('## 1. Foundation\n', '## 1. Foundation ✅\n', 1)
+          text = text.replace('## 2. Application scaffold\n', '## 2. Application scaffold ✅\n', 1)
+          roadmap.write_text(text)
+
+          decisions = Path('docs/DECISIONS.md')
+          decisions.write_text(decisions.read_text().rstrip() + '''\n\n## D-013 — Use stable supported scaffold lines\n\nThe V1 scaffold uses Next.js 16.2.x, Node.js 24 LTS, Laravel 13, PHP 8.4 and PostgreSQL 18.x. Preview/canary framework releases are excluded from the baseline. Exact resolved application dependencies are committed in lockfiles.\n\n## D-014 — Baseline CI mirrors both application boundaries\n\nPermanent CI validates foundation documentation, performs locked frontend lint/typecheck/build checks, runs Laravel quality/tests against PostgreSQL, and smoke-tests the Docker application stack. Floating GitHub Action tags are not used.\n''')
+
+          changelog = Path('CHANGELOG.md')
+          changelog.write_text(changelog.read_text().rstrip() + '''\n- Added the `apps/web` Next.js 16.2 application with a committed npm lockfile.\n- Added the `apps/api` Laravel 13 application with a committed Composer lockfile.\n- Added PostgreSQL 18.4 and non-root application Docker runtimes through `compose.yaml`.\n- Added a minimal API liveness endpoint for stack verification.\n- Recorded stable scaffold/toolchain and baseline-CI decisions.\n''')
+          PY
+
+          python3 scripts/check-docs.py
+          (cd apps/web && npm ci && npm run lint && npm run typecheck && npm run build)
+          (cd apps/api && composer validate --strict && cp .env.example .env && php artisan key:generate --force && vendor/bin/pint --test && php artisan test)
+          docker compose config --quiet
+
+      - name: Commit generated scaffold
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add . ':!.github/workflows/bootstrap-scaffold.yml'
+          git commit -m 'feat: scaffold opportunity tracker applications'
+          git push origin HEAD:feat/application-scaffold
