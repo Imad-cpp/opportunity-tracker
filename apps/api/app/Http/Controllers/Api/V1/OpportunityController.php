@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\ListOpportunitiesRequest;
 use App\Http\Requests\StoreOpportunityRequest;
 use App\Http\Requests\UpdateOpportunityRequest;
 use App\Http\Requests\UpdateOpportunityStatusRequest;
@@ -10,6 +11,7 @@ use App\Http\Resources\OpportunityEventResource;
 use App\Http\Resources\OpportunityResource;
 use App\Models\Opportunity;
 use App\Models\User;
+use App\Opportunities\DeadlineInput;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Http\Response;
@@ -17,14 +19,52 @@ use Illuminate\Support\Facades\DB;
 
 class OpportunityController extends Controller
 {
-    public function index(Request $request): AnonymousResourceCollection
+    public function index(ListOpportunitiesRequest $request): AnonymousResourceCollection
     {
         $user = $this->user($request);
-        $opportunities = Opportunity::query()
-            ->ownedBy($user)
-            ->whereNull('archived_at')
+        $filters = $request->validated();
+        $query = Opportunity::query()->ownedBy($user);
+
+        ($filters['archived'] ?? false)
+            ? $query->whereNotNull('archived_at')
+            : $query->whereNull('archived_at');
+
+        if (($filters['q'] ?? '') !== '') {
+            $term = '%'.$filters['q'].'%';
+
+            $query->where(function ($query) use ($term): void {
+                $query->where('title', 'ilike', $term)
+                    ->orWhere('organization', 'ilike', $term);
+            });
+        }
+
+        foreach (['status', 'type', 'priority'] as $field) {
+            if (array_key_exists($field, $filters)) {
+                $query->where($field, $filters[$field]);
+            }
+        }
+
+        if (isset($filters['deadline_from'])) {
+            $query->where(
+                'deadline_at',
+                '>=',
+                DeadlineInput::dateBoundary($filters['deadline_from'], $user->timezone, false),
+            );
+        }
+
+        if (isset($filters['deadline_to'])) {
+            $query->where(
+                'deadline_at',
+                '<=',
+                DeadlineInput::dateBoundary($filters['deadline_to'], $user->timezone, true),
+            );
+        }
+
+        $opportunities = $query
             ->orderByDesc('updated_at')
-            ->get();
+            ->orderByDesc('id')
+            ->paginate(perPage: 20)
+            ->withQueryString();
 
         return OpportunityResource::collection($opportunities);
     }
@@ -34,11 +74,14 @@ class OpportunityController extends Controller
         $user = $this->user($request);
 
         $opportunity = DB::transaction(function () use ($request, $user): Opportunity {
-            $opportunity = $user->opportunities()->create([
-                ...$request->validated(),
+            $validated = $request->validated();
+            $attributes = [
+                ...DeadlineInput::withoutRawFields($validated),
+                ...DeadlineInput::attributes($validated, $user),
                 'status' => 'SAVED',
-            ]);
+            ];
 
+            $opportunity = $user->opportunities()->create($attributes);
             $this->appendEvent($opportunity, $user, 'CREATED');
 
             return $opportunity;
@@ -57,7 +100,13 @@ class OpportunityController extends Controller
         $opportunity = DB::transaction(function () use ($request, $id): Opportunity {
             $user = $this->user($request);
             $opportunity = $this->ownedForUpdate($request, $id);
-            $opportunity->fill($request->validated());
+            $validated = $request->validated();
+            $attributes = [
+                ...DeadlineInput::withoutRawFields($validated),
+                ...DeadlineInput::attributes($validated, $user),
+            ];
+
+            $opportunity->fill($attributes);
             $changedFields = array_keys($opportunity->getDirty());
 
             if ($changedFields !== []) {
