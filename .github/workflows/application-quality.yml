@@ -1,4 +1,4 @@
-name: Build Opportunity CRUD V5
+name: Build Opportunity CRUD V6
 
 on:
   push:
@@ -58,7 +58,6 @@ jobs:
           set -euo pipefail
           python3 <<'PY'
           from pathlib import Path
-          import re
 
           bootstrap = Path('apps/api/bootstrap/app.php')
           text = bootstrap.read_text(encoding='utf-8')
@@ -70,22 +69,23 @@ jobs:
                   raise SystemExit('authentication import marker changed unexpectedly')
               text = text.replace(auth_import, auth_import + not_found_import, 1)
 
-          auth_handler = '$exceptions->render(function (AuthenticationException $exception, Request $request) {'
-          stable_handler = '''$exceptions->render(function (NotFoundHttpException $exception, Request $request) {
-            if (! $request->is('api/*')) {
-                return null;
-            }
-
-            return response()->json([
-                'error' => [
-                    'code' => 'NOT_FOUND',
-                    'message' => 'The requested resource was not found.',
-                ],
-            ], 404);
-        });
-
-        '''
-          if stable_handler not in text:
+          auth_handler = '        $exceptions->render(function (AuthenticationException $exception, Request $request) {'
+          stable_handler = (
+              '        $exceptions->render(function (NotFoundHttpException $exception, Request $request) {\n'
+              "            if (! $request->is('api/*')) {\n"
+              '                return null;\n'
+              '            }\n'
+              '\n'
+              '            return response()->json([\n'
+              "                'error' => [\n"
+              "                    'code' => 'NOT_FOUND',\n"
+              "                    'message' => 'The requested resource was not found.',\n"
+              '                ],\n'
+              '            ], 404);\n'
+              '        });\n'
+              '\n'
+          )
+          if 'function (NotFoundHttpException $exception, Request $request)' not in text:
               if text.count(auth_handler) != 1:
                   raise SystemExit('authentication handler marker changed unexpectedly')
               text = text.replace(auth_handler, stable_handler + auth_handler, 1)
@@ -93,14 +93,11 @@ jobs:
 
           ownership = Path('apps/api/tests/Feature/OwnershipScopeTest.php')
           text = ownership.read_text(encoding='utf-8')
-          pattern = re.compile(
-              r'return Opportunity::query\(\)->create\(\[\s*'
-              r"'owner_id' => \$owner->getKey\(\),\s*"
-          )
-          text, count = pattern.subn("return $owner->opportunities()->create([\n            ", text, count=1)
-          if count != 1:
+          old = "return Opportunity::query()->create([\n            'owner_id' => $owner->getKey(),\n"
+          new = "return $owner->opportunities()->create([\n"
+          if text.count(old) != 1:
               raise SystemExit('ownership test helper shape changed unexpectedly')
-          ownership.write_text(text, encoding='utf-8')
+          ownership.write_text(text.replace(old, new, 1), encoding='utf-8')
           PY
       - name: Format and validate CRUD
         working-directory: apps/api
