@@ -1,4 +1,4 @@
-name: Refresh Stable Web Patch
+name: Apply PostgreSQL 18 Compose Fix
 
 on:
   push:
@@ -11,29 +11,44 @@ permissions:
   contents: write
 
 jobs:
-  refresh:
+  apply:
     runs-on: ubuntu-24.04
     steps:
       - name: Checkout clean PR branch
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
         with:
           ref: feat/application-scaffold-clean
-      - name: Set up Node.js 24 LTS
-        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
-        with:
-          node-version: '24'
-      - name: Update stable Next.js patch and validate
-        working-directory: apps/web
+
+      - name: Correct PostgreSQL 18 volume target
+        shell: bash
         run: |
-          npm install --save-exact next@16.2.12 eslint-config-next@16.2.12
-          npm audit --omit=dev --audit-level=high
-          npm run lint
-          npm run typecheck
-          npm run build
-      - name: Commit stable security patch
+          set -euo pipefail
+          python3 <<'PY'
+          from pathlib import Path
+
+          compose = Path('compose.yaml')
+          text = compose.read_text(encoding='utf-8')
+          old = 'postgres-data:/var/lib/postgresql/data'
+          new = 'postgres-data:/var/lib/postgresql'
+          if text.count(old) != 1:
+              raise SystemExit('expected exactly one PostgreSQL legacy volume target')
+          compose.write_text(text.replace(old, new, 1), encoding='utf-8')
+
+          changelog = Path('CHANGELOG.md')
+          note = "- Corrected the PostgreSQL 18 Compose volume target to the image's version-aware parent data directory."
+          body = changelog.read_text(encoding='utf-8')
+          if note not in body:
+              changelog.write_text(body.rstrip() + '\n' + note + '\n', encoding='utf-8')
+          PY
+
+          docker compose config --quiet
+
+      - name: Commit runtime fix
+        shell: bash
         run: |
+          set -euo pipefail
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add apps/web/package.json apps/web/package-lock.json
-          git commit -m 'fix: update stable Next.js security patch'
+          git add compose.yaml CHANGELOG.md
+          git commit -m 'fix: mount PostgreSQL 18 data at supported path'
           git push origin HEAD:feat/application-scaffold-clean
