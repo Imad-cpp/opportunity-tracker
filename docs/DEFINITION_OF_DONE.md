@@ -4,7 +4,7 @@ A V1 release is complete only when the same exact release commit satisfies the a
 
 ## Product
 
-- [ ] Register/login/logout/me flow works.
+- [x] Register/login/logout/me flow works.
 - [ ] Authenticated user can create, read and edit an opportunity.
 - [ ] Status changes append visible history.
 - [ ] Archive/restore works without losing history.
@@ -18,9 +18,10 @@ A V1 release is complete only when the same exact release commit satisfies the a
 
 - [ ] Every private resource is server-side owner scoped.
 - [ ] Foreign opportunity UUIDs return `404` on reads and mutations.
-- [ ] Authentication endpoints are rate limited.
-- [ ] Session/CSRF behavior is tested.
-- [ ] CORS is deny-by-default outside configured first-party origins.
+- [x] Authentication endpoints are rate limited.
+- [ ] Session/CSRF behavior is fully tested at the browser boundary.
+  - Session rotation, logout invalidation and Sanctum CSRF-cookie bootstrap are covered now. Laravel intentionally bypasses CSRF verification during ordinary PHPUnit requests, so browser-level rejection evidence remains open rather than being inferred.
+- [x] CORS does not allow an unconfigured origin to become an allowed origin.
 - [ ] URL scheme validation rejects non-HTTP(S) values.
 - [ ] User-authored notes are rendered as text, not HTML.
 - [ ] Logs/tests/demos contain no secrets or real personal application data.
@@ -35,24 +36,26 @@ A V1 release is complete only when the same exact release commit satisfies the a
 
 ## API and data
 
-- [ ] Database migrations and rollback path are reviewed.
-- [ ] Useful owner/status/deadline indexes exist.
+- [ ] Database migrations and rollback path are reviewed for the full V1 schema.
+- [x] Useful owner/status/deadline indexes exist on the opportunity persistence boundary.
 - [ ] Pagination and allowlisted filtering are covered by tests.
-- [ ] Stable error envelope is documented.
+- [x] Stable identity error envelope is documented and exercised.
 - [ ] OpenAPI matches implemented V1 routes and schemas.
 
 ## Automated evidence
 
 - [ ] Backend formatting/static analysis/tests are green.
+  - Formatting and tests are green; static analysis is added in the hardening step.
 - [ ] Frontend lint/typecheck/tests/build are green.
-- [ ] Integration tests use PostgreSQL, not a different database engine as a substitute.
+  - Lint, typecheck and build are green; product-level frontend tests are not present yet.
+- [x] Integration tests use PostgreSQL, not a different database engine as a substitute.
 - [ ] End-to-end demo proves register → create → update status → filter/dashboard → archive/restore → delete.
 - [ ] Dependency audit and secret-hygiene checks are green.
-- [ ] CI actions are pinned and permissions are least-privilege.
+- [x] CI actions are pinned and permissions are least-privilege for the permanent workflow.
 
 ## Release evidence
 
-- [ ] README and architecture/security/data/API docs match implementation.
+- [ ] README and architecture/security/data/API docs match the complete V1 implementation.
 - [ ] CHANGELOG and release notes are prepared.
 - [ ] Exact release commit is green before tag creation.
 - [ ] Tag/release points to that exact verified commit.

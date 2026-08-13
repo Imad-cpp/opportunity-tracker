@@ -2,6 +2,10 @@
 
 All primary identifiers are UUIDs.
 
+## Implementation status
+
+The `users`, `sessions`, `password_reset_tokens` and `opportunities` tables are implemented. `opportunity_events` remains planned for the workflow/history step.
+
 ## users
 
 - `id` UUID primary key
@@ -10,6 +14,14 @@ All primary identifiers are UUIDs.
 - `password` hash
 - `timezone` validated IANA time-zone identifier
 - timestamps
+
+Account identifiers are generated server-side through Eloquent UUID support. Registration normalizes email casing and surrounding whitespace before uniqueness validation/persistence.
+
+## sessions
+
+Laravel's server-side session table stores the authenticated browser session. Its nullable `user_id` column is UUID-compatible with `users.id`.
+
+V1 does not introduce a personal-access-token table as part of the public authentication contract; Sanctum is used for first-party session authentication.
 
 ## opportunities
 
@@ -31,6 +43,8 @@ All primary identifiers are UUIDs.
 - `archived_at` nullable timestamp
 - timestamps
 
+The model exposes an `ownedBy(User)` query scope. Public CRUD endpoints are not implemented yet, so the table/model currently establishes the persistence and authorization boundary for the next step rather than exposing an incomplete API.
+
 ### Invariants
 
 - Every opportunity belongs to exactly one owner.
@@ -41,9 +55,11 @@ All primary identifiers are UUIDs.
 - Date-only deadline input records `DATE` precision.
 - Archive does not alter status automatically.
 
+Validation for the opportunity-field invariants above is planned with CRUD and must not be inferred merely from the current database columns.
+
 ## opportunity_events
 
-Append-oriented user-facing history for meaningful lifecycle activity.
+Append-oriented user-facing history for meaningful lifecycle activity. **Not implemented yet.**
 
 - `id` UUID primary key
 - `opportunity_id` UUID foreign key → opportunities
@@ -66,15 +82,18 @@ Event metadata must not duplicate notes, session data, credentials or other unne
 
 ## Delete behavior
 
-Permanent deletion cascades dependent `opportunity_events`. V1 prefers user data minimization over retaining a hidden forensic tombstone for deleted personal tracking data.
+Permanent deletion will cascade dependent `opportunity_events` once that table is implemented. V1 prefers user data minimization over retaining a hidden forensic tombstone for deleted personal tracking data.
 
 ## Useful indexes
 
-At minimum:
+Implemented on `opportunities`:
 
 - `(owner_id, archived_at, updated_at)`
 - `(owner_id, status)`
 - `(owner_id, type)`
 - `(owner_id, priority)`
 - `(owner_id, deadline_at)`
-- `(opportunity_id, created_at)` on events
+
+Planned with events:
+
+- `(opportunity_id, created_at)`

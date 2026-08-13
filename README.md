@@ -81,7 +81,9 @@ The repository is a monorepo. The web client and API stay separate at the applic
 
 ## Status
 
-**Application scaffold implemented.** The Next.js web app, Laravel API, PostgreSQL local stack and reproducible dependency locks exist. Identity and opportunity workflows are not implemented yet.
+**Identity and ownership foundation implemented.** The repository now has the Next.js/Laravel/PostgreSQL application scaffold plus first-party Sanctum session authentication, UUID accounts, validated account time zones, authentication rate limits, explicit CORS configuration and an owner-scoped opportunity persistence boundary. Opportunity CRUD, lifecycle history, filters and dashboard workflows remain to be implemented.
+
+V1 uses Sanctum for first-party cookie/session authentication only; it does not issue personal access tokens.
 
 ## License
 
