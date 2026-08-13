@@ -1,10 +1,10 @@
 # Roadmap
 
-## 1. Foundation
+## 1. Foundation ✅
 
 Product contract, architecture, data model, API map, security model, engineering decisions, Definition of Done and docs CI.
 
-## 2. Application scaffold
+## 2. Application scaffold ✅
 
 Monorepo structure, Next.js web, Laravel API, PostgreSQL, Docker/local environment and baseline CI.
 
