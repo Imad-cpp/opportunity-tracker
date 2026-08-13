@@ -81,9 +81,9 @@ The repository is a monorepo. The web client and API stay separate at the applic
 
 ## Status
 
-**Owner-scoped workflow history implemented.** The API now records `CREATED`, `UPDATED`, `STATUS_CHANGED`, `ARCHIVED` and `RESTORED` events transactionally with the corresponding opportunity mutation. Status has a dedicated route, next-action fields are editable, history reads inherit the owner boundary, and repeated no-op requests do not fabricate events.
+**Owner-scoped search, filters and deadline semantics are implemented.** The list endpoint now supports bounded title/organization search, allowlisted status/type/priority/archive/deadline filters, deterministic fixed-size pagination and account-time-zone date boundaries. Deadline create/update/clear preserves date-only versus exact precision, while API responses derive `OVERDUE`, `DUE_SOON` and `UPCOMING` attention without silently changing lifecycle status.
 
-Identity, CRUD and workflow/history are complete roadmap slices. Search, pagination, deadline precision/derivation and dashboard product surfaces remain intentionally deferred to the next steps.
+Identity, CRUD, workflow/history and search/filters/deadlines are complete roadmap slices. The action-first dashboard and frontend product states are the next implementation step.
 
 V1 uses Sanctum for first-party cookie/session authentication only; it does not issue personal access tokens.
 

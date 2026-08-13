@@ -20,9 +20,9 @@ Authenticated create/read/update, strict editable-field validation, HTTP(S) sour
 
 Transactional status changes, editable next actions and append-oriented `CREATED`, `UPDATED`, `STATUS_CHANGED`, `ARCHIVED` and `RESTORED` opportunity history with owner-scoped reads and no-op suppression.
 
-## 6. Search, filters and deadlines
+## 6. Search, filters and deadlines ✅
 
-Search, pagination, allowlisted filters, date-only/exact deadline behavior, due-soon and overdue derivation.
+Owner-scoped bounded search, deterministic 20-item pagination, allowlisted filters, date-only/exact deadline behavior, account-time-zone boundaries and due-soon/overdue/upcoming derivation.
 
 ## 7. Dashboard product surface
 
