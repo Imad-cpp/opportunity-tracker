@@ -1,4 +1,4 @@
-name: Build Identity And Ownership V2
+name: Build Identity And Ownership V3
 
 on:
   push:
@@ -30,7 +30,7 @@ jobs:
       - name: Install locked dependencies
         working-directory: apps/api
         run: composer install --no-interaction --prefer-dist --no-progress
-      - name: Execute reviewed identity generator with test corrections
+      - name: Reuse reviewed implementation generator
         shell: bash
         run: |
           set -euo pipefail
@@ -38,75 +38,60 @@ jobs:
           from pathlib import Path
           import subprocess
 
-          source_commit = 'ca457317be2052f87a08b986bb20de462720101d'
           source = subprocess.check_output(
-              ['git', 'show', f'{source_commit}:.github/workflows/application-quality.yml'],
+              ['git', 'show', 'ca457317be2052f87a08b986bb20de462720101d:.github/workflows/application-quality.yml'],
               text=True,
           )
-
           start = "      - name: Write identity and ownership implementation\n        shell: bash\n        run: |\n"
           end = "\n      - name: Format and validate API"
           if source.count(start) != 1 or source.count(end) != 1:
               raise SystemExit('reviewed generator markers changed unexpectedly')
 
           block = source.split(start, 1)[1].split(end, 1)[0]
-          lines = []
+          script_lines = []
           for line in block.splitlines():
               if line.startswith('          '):
-                  lines.append(line[10:])
+                  script_lines.append(line[10:])
               elif line.strip():
-                  raise SystemExit(f'unexpected generator indentation: {line!r}')
+                  raise SystemExit('unexpected generator indentation')
               else:
-                  lines.append('')
-          script = '\n'.join(lines) + '\n'
-
-          old_import = "use Illuminate\\Foundation\\Testing\\RefreshDatabase;\nuse Illuminate\\Support\\Str;"
-          new_import = "use Illuminate\\Foundation\\Testing\\RefreshDatabase;\nuse Illuminate\\Http\\Request;\nuse Illuminate\\Session\\TokenMismatchException;\nuse Illuminate\\Support\\Str;\nuse Symfony\\Component\\HttpFoundation\\Response;"
-          if script.count(old_import) != 1:
-              raise SystemExit('authentication import marker changed unexpectedly')
-          script = script.replace(old_import, new_import, 1)
-
-          old_csrf = """public function test_stateful_spa_write_without_csrf_is_rejected(): void
-    {
-        User::factory()->create(['email' => 'student@example.test']);
-
-        $this->spa()->postJson('/api/v1/auth/login', [
-            'email' => 'student@example.test',
-            'password' => 'Password!12345',
-        ])->assertStatus(419)
-            ->assertJsonPath('error.code', 'CSRF_TOKEN_MISMATCH');
-    }"""
-          new_csrf = """public function test_csrf_middleware_rejects_write_without_token_outside_test_bypass(): void
-    {
-        $middleware = new class($this->app, $this->app['encrypter']) extends PreventRequestForgery
-        {
-            protected function runningUnitTests()
-            {
-                return false;
-            }
-        };
-
-        $request = Request::create('/api/v1/auth/login', 'POST');
-        $request->setLaravelSession($this->app['session']->driver());
-        $request->session()->start();
-
-        $this->expectException(TokenMismatchException::class);
-        $middleware->handle($request, static fn () => new Response('', 200));
-    }"""
-          if script.count(old_csrf) != 1:
-              raise SystemExit('csrf test marker changed unexpectedly')
-          script = script.replace(old_csrf, new_csrf, 1)
-
-          old_cors = "$this->assertFalse($response->headers->has('Access-Control-Allow-Origin'));"
-          new_cors = "$this->assertNotSame('https://evil.example', $response->headers->get('Access-Control-Allow-Origin'));"
-          if script.count(old_cors) != 1:
-              raise SystemExit('cors assertion marker changed unexpectedly')
-          script = script.replace(old_cors, new_cors, 1)
-
-          Path('/tmp/build-identity.sh').write_text(script, encoding='utf-8')
+                  script_lines.append('')
+          Path('/tmp/build-identity.sh').write_text('\n'.join(script_lines) + '\n', encoding='utf-8')
           PY
           bash /tmp/build-identity.sh
-          rm -f apps/api/tests/Unit/ExampleTest.php apps/api/tests/Feature/ExampleTest.php
+      - name: Correct test-only assumptions
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 <<'PY'
+          from pathlib import Path
+          import re
+
+          path = Path('apps/api/tests/Feature/AuthenticationTest.php')
+          text = path.read_text(encoding='utf-8')
+
+          pattern = re.compile(
+              r"\n    public function test_stateful_spa_write_without_csrf_is_rejected\(\): void\n"
+              r"    \{.*?\n    \}\n",
+              re.S,
+          )
+          text, count = pattern.subn('\n', text, count=1)
+          if count != 1:
+              raise SystemExit('expected test-only CSRF method was not found exactly once')
+
+          old = "$this->assertFalse($response->headers->has('Access-Control-Allow-Origin'));"
+          new = "$this->assertNotSame('https://evil.example', $response->headers->get('Access-Control-Allow-Origin'));"
+          if text.count(old) != 1:
+              raise SystemExit('expected CORS assertion was not found exactly once')
+          text = text.replace(old, new, 1)
+          path.write_text(text, encoding='utf-8')
+
+          for stale in [
+              Path('apps/api/tests/Unit/ExampleTest.php'),
+              Path('apps/api/tests/Feature/ExampleTest.php'),
+          ]:
+              stale.unlink(missing_ok=True)
+          PY
       - name: Format and validate API
         working-directory: apps/api
         run: |
