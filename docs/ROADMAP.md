@@ -8,9 +8,9 @@ Product contract, architecture, data model, API map, security model, engineering
 
 Monorepo structure, Next.js web, Laravel API, PostgreSQL, Docker/local environment and baseline CI.
 
-## 3. Identity and ownership
+## 3. Identity and ownership ✅
 
-Sanctum session authentication, CSRF behavior, account time zone and owner-scoped authorization tests.
+Sanctum first-party session authentication, UUID accounts, CSRF bootstrap/session behavior, account time zone validation, authentication rate limits and owner-scoped persistence tests.
 
 ## 4. Opportunity CRUD
 
