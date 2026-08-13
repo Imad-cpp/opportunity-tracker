@@ -18,3 +18,8 @@ All meaningful project changes are recorded here.
 - Recorded stable scaffold/toolchain and baseline-CI decisions.
 - Added a narrowly scoped, time-limited dependency-audit policy for the current stable web framework dependency tree; unexpected findings and version changes remain blocking.
 - Corrected the PostgreSQL 18 Compose volume target to the image's version-aware parent data directory.
+- Added first-party account session endpoints for registration, login, logout and current-account reads.
+- Added UUID accounts, normalized email storage and validated account time zones.
+- Added explicit browser-origin/session configuration and bounded account-request limits.
+- Added the UUID owner-linked opportunity persistence boundary and owner-scope tests ahead of CRUD.
+- Replaced generated placeholder API tests with synthetic identity and ownership coverage.
