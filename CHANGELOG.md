@@ -16,3 +16,4 @@ All meaningful project changes are recorded here.
 - Added PostgreSQL 18.4 and non-root application Docker runtimes through `compose.yaml`.
 - Added a minimal API liveness endpoint for stack verification.
 - Recorded stable scaffold/toolchain and baseline-CI decisions.
+- Added a narrowly scoped, time-limited dependency-audit policy for the current stable web framework dependency tree; unexpected findings and version changes remain blocking.
