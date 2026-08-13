@@ -19,6 +19,12 @@ REQUIRED = [
     "docs/DEFINITION_OF_DONE.md",
     "docs/ROADMAP.md",
 ]
+IGNORED_DIRS = {
+    ".git",
+    ".next",
+    "node_modules",
+    "vendor",
+}
 LINK_RE = re.compile(r"\[[^\]]+\]\(([^)]+)\)")
 
 errors: list[str] = []
@@ -28,6 +34,10 @@ for relative in REQUIRED:
         errors.append(f"missing required file: {relative}")
 
 for markdown in ROOT.rglob("*.md"):
+    relative_markdown = markdown.relative_to(ROOT)
+    if any(part in IGNORED_DIRS for part in relative_markdown.parts[:-1]):
+        continue
+
     text = markdown.read_text(encoding="utf-8")
     for raw_target in LINK_RE.findall(text):
         target = raw_target.strip().split("#", 1)[0]
@@ -38,10 +48,10 @@ for markdown in ROOT.rglob("*.md"):
         try:
             resolved.relative_to(ROOT)
         except ValueError:
-            errors.append(f"{markdown.relative_to(ROOT)}: link escapes repository: {raw_target}")
+            errors.append(f"{relative_markdown}: link escapes repository: {raw_target}")
             continue
         if not resolved.exists():
-            errors.append(f"{markdown.relative_to(ROOT)}: broken local link: {raw_target}")
+            errors.append(f"{relative_markdown}: broken local link: {raw_target}")
 
 if errors:
     print("DOCS_QUALITY=FAIL")

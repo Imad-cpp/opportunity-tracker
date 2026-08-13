@@ -47,3 +47,15 @@ Redis, queues, object storage, dedicated search and microservices are excluded u
 ## D-012 — MIT license
 
 The public portfolio repository is released under the MIT License.
+
+## D-013 — Use stable supported scaffold lines
+
+The V1 scaffold uses Next.js 16.2.x, Node.js 24 LTS, Laravel 13, PHP 8.4 and PostgreSQL 18.x. Preview/canary framework releases are excluded from the baseline. Exact resolved application dependencies are committed in lockfiles.
+
+## D-014 — Baseline CI mirrors both application boundaries
+
+Permanent CI validates foundation documentation, performs locked frontend lint/typecheck/build checks, runs Laravel quality/tests against PostgreSQL, and smoke-tests the Docker application stack. Floating GitHub Action tags are not used.
+
+## D-015 — Upstream npm security exceptions must be exact, bounded and expiring
+
+The stable Next.js 16.2.11 dependency tree currently reports high-severity advisories through its resolved `postcss` 8.4.31 and `sharp` 0.34.5 dependencies. CI does not disable `npm audit` and does not accept arbitrary high-severity findings. The temporary exception is limited to those exact resolved package versions, the exact currently-known GHSA identifiers and the expected Next.js transitive chain. Any new high/critical package, advisory, version change or critical-severity finding fails CI. The exception expires on 2026-08-27 and must be removed earlier if a stable Next.js release resolves the upstream findings. Preview/canary Next.js releases are not adopted solely to silence the audit.

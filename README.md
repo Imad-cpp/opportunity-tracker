@@ -81,7 +81,7 @@ The repository is a monorepo. The web client and API stay separate at the applic
 
 ## Status
 
-**Foundation in progress.** No application implementation is claimed yet.
+**Application scaffold implemented.** The Next.js web app, Laravel API, PostgreSQL local stack and reproducible dependency locks exist. Identity and opportunity workflows are not implemented yet.
 
 ## License
 
