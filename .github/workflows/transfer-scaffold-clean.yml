@@ -1,0 +1,56 @@
+name: Transfer Validated Scaffold
+
+on:
+  push:
+    branches:
+      - feat/application-scaffold
+    paths:
+      - .github/workflows/transfer-scaffold-clean.yml
+
+permissions:
+  contents: write
+
+jobs:
+  transfer:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout source branch
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        with:
+          ref: feat/application-scaffold
+          fetch-depth: 0
+
+      - name: Copy only permanent scaffold files
+        shell: bash
+        run: |
+          set -euo pipefail
+          SOURCE_SHA='f2cf0cc278c5487f72d6c114eb4546eec1dfa473'
+          TARGET_BRANCH='feat/application-scaffold-clean'
+
+          git cat-file -e "${SOURCE_SHA}^{commit}"
+          git fetch origin "${TARGET_BRANCH}:${TARGET_BRANCH}"
+
+          rm -rf /tmp/permanent-scaffold
+          mkdir -p /tmp/permanent-scaffold
+          git archive "${SOURCE_SHA}" | tar -x -C /tmp/permanent-scaffold
+          rm -rf /tmp/permanent-scaffold/.github/workflows
+          rm -f /tmp/permanent-scaffold/.scaffold-diagnostic.txt
+
+          git checkout "${TARGET_BRANCH}"
+          rsync -a --delete --exclude='.git/' /tmp/permanent-scaffold/ ./
+
+          test ! -e .github/workflows/bootstrap-scaffold.yml
+          test ! -e .github/workflows/bootstrap-scaffold-v2.yml
+          test ! -e .github/workflows/bootstrap-scaffold-v3.yml
+          test ! -e .scaffold-diagnostic.txt
+          test -f apps/web/package-lock.json
+          test -f apps/api/composer.lock
+          test -f compose.yaml
+
+          python3 scripts/check-docs.py
+
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git commit -m 'feat: scaffold opportunity tracker applications'
+          git push origin "HEAD:${TARGET_BRANCH}"
