@@ -1,0 +1,33 @@
+name: Finalize Step 40 Tree
+
+on:
+  push:
+    branches:
+      - feat/search-filters-deadlines
+    paths:
+      - .github/workflows/finalize-step40-tree.yml
+
+permissions:
+  contents: write
+
+jobs:
+  finalize:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Attach prepared tree to branch
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          current="${GITHUB_SHA}"
+          tree="b0e0903105ca54e2ce714925d6224e8a3c9941f6"
+          commit="$(gh api "repos/${GITHUB_REPOSITORY}/git/commits" \
+            -f message='feat: extend opportunity query behavior' \
+            -f tree="${tree}" \
+            -f "parents[]=${current}" \
+            --jq .sha)"
+          gh api -X PATCH "repos/${GITHUB_REPOSITORY}/git/refs/heads/feat/search-filters-deadlines" \
+            -f sha="${commit}" \
+            -F force=false >/dev/null
+          echo "STEP40_TREE_COMMIT=${commit}"
