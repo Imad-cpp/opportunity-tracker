@@ -63,7 +63,6 @@ jobs:
           import datetime as dt
           import json
           import re
-          import sys
           from pathlib import Path
 
           expires_on = dt.date.fromisoformat('2026-08-27')
@@ -75,7 +74,7 @@ jobs:
 
           expected_versions = {
               'next': '16.2.11',
-              'postcss': '8.5.22',
+              'postcss': '8.4.31',
               'sharp': '0.34.5',
           }
           expected_advisories = {
