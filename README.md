@@ -81,7 +81,9 @@ The repository is a monorepo. The web client and API stay separate at the applic
 
 ## Status
 
-**Identity and ownership foundation implemented.** The repository now has the Next.js/Laravel/PostgreSQL application scaffold plus first-party Sanctum session authentication, UUID accounts, validated account time zones, authentication rate limits, explicit CORS configuration and an owner-scoped opportunity persistence boundary. Opportunity CRUD, lifecycle history, filters and dashboard workflows remain to be implemented.
+**Owner-scoped opportunity CRUD implemented.** The repository now has first-party session identity plus authenticated create/read/update/archive/restore/delete flows. Opportunity ownership is assigned through the authenticated account relationship, foreign UUIDs return a stable `404`, source URLs are restricted to HTTP(S), and workflow-owned fields cannot be changed through ordinary CRUD payloads.
+
+Status changes with append-oriented history are the next roadmap step. Deadline normalization, search/filtering and dashboard workflows remain intentionally deferred.
 
 V1 uses Sanctum for first-party cookie/session authentication only; it does not issue personal access tokens.
 
