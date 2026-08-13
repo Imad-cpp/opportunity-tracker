@@ -9,11 +9,11 @@ A V1 release is complete only when the same exact release commit satisfies the a
 - [x] Status changes append visible history.
 - [x] Archive/restore works without losing history.
 - [x] Permanent delete removes the opportunity and dependent events.
-- [ ] Search and V1 filters work together predictably.
+- [x] Search and V1 filters work together predictably.
 - [ ] Dashboard shows due soon, overdue, active-status counts and recent activity.
 - [ ] Next action is visible in list/detail/dashboard where relevant.
   - Backend capture/update and API representation are implemented; frontend/dashboard presentation remains open.
-- [ ] Date-only and exact-time deadline semantics are tested.
+- [x] Date-only and exact-time deadline semantics are tested.
 
 ## Security and privacy
 
@@ -41,7 +41,7 @@ A V1 release is complete only when the same exact release commit satisfies the a
 
 - [ ] Database migrations and rollback path are reviewed for the full V1 schema.
 - [x] Useful owner/status/deadline/event indexes exist on the implemented persistence boundary.
-- [ ] Pagination and allowlisted filtering are covered by tests.
+- [x] Pagination and allowlisted filtering are covered by tests.
 - [x] Stable identity/resource error envelopes are documented and exercised.
 - [x] Workflow mutations and corresponding event writes are transactionally coupled.
 - [x] Event history is owner scoped and delete cascades dependent product events.
@@ -62,7 +62,7 @@ A V1 release is complete only when the same exact release commit satisfies the a
 ## Release evidence
 
 - [ ] README and architecture/security/data/API docs match the complete V1 implementation.
-  - Documents are synchronized through workflow/history; later V1 steps remain intentionally marked planned.
+  - Documents are synchronized through search/filters/deadlines; later V1 steps remain intentionally marked planned.
 - [ ] CHANGELOG and release notes are prepared.
 - [ ] Exact release commit is green before tag creation.
 - [ ] Tag/release points to that exact verified commit.
