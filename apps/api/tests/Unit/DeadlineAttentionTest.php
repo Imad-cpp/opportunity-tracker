@@ -5,13 +5,14 @@ namespace Tests\Unit;
 use App\Models\Opportunity;
 use App\Opportunities\DeadlineAttention;
 use Carbon\CarbonImmutable;
-use PHPUnit\Framework\TestCase;
+use Tests\TestCase;
 
 class DeadlineAttentionTest extends TestCase
 {
     protected function tearDown(): void
     {
         CarbonImmutable::setTestNow();
+        parent::tearDown();
     }
 
     public function test_attention_is_derived_only_for_pre_application_statuses(): void
