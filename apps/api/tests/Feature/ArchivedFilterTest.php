@@ -88,4 +88,14 @@ class ArchivedFilterTest extends TestCase
             ->getJson('/api/v1/opportunities?archived=maybe')
             ->assertUnprocessable();
     }
+
+    public function test_reversed_deadline_range_is_rejected(): void
+    {
+        $owner = User::factory()->create();
+
+        $this->actingAs($owner, 'web')
+            ->getJson('/api/v1/opportunities?deadline_from=2026-09-02&deadline_to=2026-09-01')
+            ->assertUnprocessable()
+            ->assertJsonPath('error.code', 'VALIDATION_FAILED');
+    }
 }
