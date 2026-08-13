@@ -24,7 +24,9 @@ Route::prefix('v1')->group(function (): void {
         Route::get('/opportunities/{id}', [OpportunityController::class, 'show']);
         Route::patch('/opportunities/{id}', [OpportunityController::class, 'update']);
         Route::delete('/opportunities/{id}', [OpportunityController::class, 'destroy']);
+        Route::post('/opportunities/{id}/status', [OpportunityController::class, 'updateStatus']);
         Route::post('/opportunities/{id}/archive', [OpportunityController::class, 'archive']);
         Route::post('/opportunities/{id}/restore', [OpportunityController::class, 'restore']);
+        Route::get('/opportunities/{id}/events', [OpportunityController::class, 'events']);
     });
 });
