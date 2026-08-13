@@ -32,4 +32,19 @@ class DeadlineInputTest extends TestCase
         $expected = CarbonImmutable::parse('2026-09-01 23:59:59', 'Asia/Tokyo')->utc();
         $this->assertSame($expected->timestamp, $opportunity->deadline_at->timestamp);
     }
+
+    public function test_date_only_deadline_rejects_client_timezone(): void
+    {
+        $owner = User::factory()->create();
+
+        $this->actingAs($owner, 'web')->postJson('/api/v1/opportunities', [
+            'type' => 'INTERNSHIP',
+            'priority' => 'MEDIUM',
+            'title' => 'Synthetic opportunity',
+            'organization' => 'Synthetic Organization',
+            'deadline_at' => '2026-09-01',
+            'deadline_precision' => 'DATE',
+            'deadline_timezone' => 'UTC',
+        ])->assertUnprocessable();
+    }
 }
