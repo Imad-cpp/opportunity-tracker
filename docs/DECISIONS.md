@@ -47,3 +47,11 @@ Redis, queues, object storage, dedicated search and microservices are excluded u
 ## D-012 — MIT license
 
 The public portfolio repository is released under the MIT License.
+
+## D-013 — Use stable supported scaffold lines
+
+The V1 scaffold uses Next.js 16.2.x, Node.js 24 LTS, Laravel 13, PHP 8.4 and PostgreSQL 18.x. Preview/canary framework releases are excluded from the baseline. Exact resolved application dependencies are committed in lockfiles.
+
+## D-014 — Baseline CI mirrors both application boundaries
+
+Permanent CI validates foundation documentation, performs locked frontend lint/typecheck/build checks, runs Laravel quality/tests against PostgreSQL, and smoke-tests the Docker application stack. Floating GitHub Action tags are not used.

@@ -1,0 +1,9 @@
+.env
+.DS_Store
+apps/web/node_modules/
+apps/web/.next/
+apps/web/.env*
+!apps/web/.env.example
+apps/api/vendor/
+apps/api/.env
+apps/api/storage/logs/*.log

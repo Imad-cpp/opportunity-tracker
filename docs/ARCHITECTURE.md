@@ -57,4 +57,4 @@ V1 does not require Redis, Meilisearch, object storage, microservices, Kubernete
 
 ## Planned local environment
 
-Docker Compose will provide PostgreSQL and the Laravel API runtime. The Next.js web application may run in Compose or through the local Node toolchain, but CI must prove a reproducible build for both applications.
+Docker Compose provides PostgreSQL 18.4, the Laravel 13 API runtime and the Next.js 16.2 web runtime. Node.js 24 LTS and PHP 8.4 are the scaffold toolchain baselines. Both applications keep committed dependency lockfiles, and CI must prove reproducible installs/builds.
