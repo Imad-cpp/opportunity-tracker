@@ -54,4 +54,38 @@ class ArchivedFilterTest extends TestCase
             ->assertJsonCount(1, 'data')
             ->assertJsonPath('data.0.id', (string) $match->getKey());
     }
+
+    public function test_enum_filters_are_combined_and_invalid_values_fail(): void
+    {
+        $owner = User::factory()->create();
+        $match = $owner->opportunities()->create([
+            'type' => 'INTERNSHIP',
+            'status' => 'APPLIED',
+            'priority' => 'HIGH',
+            'title' => 'Matching item',
+            'organization' => 'Synthetic Organization',
+        ]);
+        $owner->opportunities()->create([
+            'type' => 'JOB',
+            'status' => 'SAVED',
+            'priority' => 'HIGH',
+            'title' => 'Other item',
+            'organization' => 'Synthetic Organization',
+        ]);
+
+        $this->actingAs($owner, 'web')
+            ->getJson('/api/v1/opportunities?status=APPLIED&type=INTERNSHIP&priority=HIGH')
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.id', (string) $match->getKey());
+
+        $this->actingAs($owner, 'web')
+            ->getJson('/api/v1/opportunities?status=UNKNOWN')
+            ->assertUnprocessable()
+            ->assertJsonPath('error.code', 'VALIDATION_FAILED');
+
+        $this->actingAs($owner, 'web')
+            ->getJson('/api/v1/opportunities?archived=maybe')
+            ->assertUnprocessable();
+    }
 }
