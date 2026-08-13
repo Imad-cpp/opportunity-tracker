@@ -59,3 +59,11 @@ Permanent CI validates foundation documentation, performs locked frontend lint/t
 ## D-015 — Upstream npm security exceptions must be exact, bounded and expiring
 
 The stable Next.js 16.2.11 dependency tree currently reports high-severity advisories through its resolved `postcss` 8.4.31 and `sharp` 0.34.5 dependencies. CI does not disable `npm audit` and does not accept arbitrary high-severity findings. The temporary exception is limited to those exact resolved package versions, the exact currently-known GHSA identifiers and the expected Next.js transitive chain. Any new high/critical package, advisory, version change or critical-severity finding fails CI. The exception expires on 2026-08-27 and must be removed earlier if a stable Next.js release resolves the upstream findings. Preview/canary Next.js releases are not adopted solely to silence the audit.
+
+## D-016 — Sanctum authentication is session-only in V1
+
+Sanctum is used for first-party SPA cookie/session authentication with CSRF protection. V1 does not issue personal access tokens and private routes authenticate through the session-backed `web` guard. This keeps the browser credential model narrow and avoids adding a bearer-token lifecycle that the product does not need.
+
+## D-017 — Establish ownership in persistence before exposing CRUD
+
+The `opportunities` table and model are introduced with the identity step so ownership is represented by a UUID foreign key and a reusable owner-scoped query before any public opportunity endpoint exists. CRUD must resolve records from that owner-scoped query; global lookup followed by an ownership check is not the accepted pattern.
