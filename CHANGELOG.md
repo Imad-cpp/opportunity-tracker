@@ -26,4 +26,9 @@ All meaningful project changes are recorded here.
 - Added authenticated opportunity create, list, detail, update, archive, restore and delete endpoints.
 - Added type, priority, source URL and bounded text validation for ordinary opportunity edits.
 - Added stable missing-resource behavior across opportunity reads and mutations.
-- Kept status, deadline and next-action changes outside ordinary CRUD for their dedicated roadmap steps.
+- Added editable next-action fields without allowing ordinary PATCH to bypass status workflow.
+- Added append-oriented `CREATED`, `UPDATED`, `STATUS_CHANGED`, `ARCHIVED` and `RESTORED` product history.
+- Added a dedicated status-change endpoint and owner-scoped event-history endpoint.
+- Added transactional row locking so workflow state and corresponding history commit together.
+- Added no-op suppression so repeated status/archive/restore or unchanged PATCH requests do not fabricate events.
+- Added cascade deletion and PostgreSQL-backed tests for opportunity history.
