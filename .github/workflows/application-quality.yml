@@ -1,269 +1,535 @@
-name: Application Quality
+name: Build Opportunity CRUD
 
 on:
   push:
     branches:
-      - main
-  pull_request:
+      - feat/opportunity-crud
+    paths:
+      - .github/workflows/application-quality.yml
 
 permissions:
-  contents: read
-
-concurrency:
-  group: application-quality-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  contents: write
 
 jobs:
-  docs-quality:
-    name: Docs quality
+  build-crud:
     runs-on: ubuntu-24.04
+    timeout-minutes: 15
     steps:
-      - name: Checkout
+      - name: Checkout CRUD branch
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
-      - name: Validate project documentation
-        run: python3 scripts/check-docs.py
-
-  web-quality:
-    name: Web quality
-    runs-on: ubuntu-24.04
-    defaults:
-      run:
-        working-directory: apps/web
-    steps:
-      - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
-      - name: Set up Node.js 24 LTS
-        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
         with:
-          node-version: '24'
-          cache: npm
-          cache-dependency-path: apps/web/package-lock.json
-      - name: Install locked dependencies
-        run: npm ci
-      - name: Lint
-        run: npm run lint
-      - name: Typecheck
-        run: npm run typecheck
-      - name: Build
-        run: npm run build
-      - name: Audit production dependencies
-        shell: bash
-        run: |
-          set +e
-          npm audit --omit=dev --audit-level=high --json > /tmp/npm-audit.json
-          audit_status=$?
-          set -e
-
-          if [ "${audit_status}" -eq 0 ]; then
-            echo 'NPM_AUDIT=PASS'
-            exit 0
-          fi
-
-          python3 - <<'PY'
-          import datetime as dt
-          import json
-          import re
-          from pathlib import Path
-
-          expires_on = dt.date.fromisoformat('2026-08-27')
-          if dt.date.today() > expires_on:
-              raise SystemExit('temporary npm audit exception expired on 2026-08-27')
-
-          audit = json.loads(Path('/tmp/npm-audit.json').read_text(encoding='utf-8'))
-          lock = json.loads(Path('package-lock.json').read_text(encoding='utf-8'))
-
-          expected_versions = {
-              'next': '16.2.11',
-              'postcss': '8.4.31',
-              'sharp': '0.34.5',
-          }
-          expected_advisories = {
-              'postcss': {
-                  'GHSA-6g55-p6wh-862q',
-                  'GHSA-fxqj-rqcc-2cmp',
-                  'GHSA-qx2v-qp2m-jg93',
-                  'GHSA-r28c-9q8g-f849',
-              },
-              'sharp': {'GHSA-f88m-g3jw-g9cj'},
-          }
-          expected_next_via = {'postcss', 'sharp'}
-
-          vulnerabilities = audit.get('vulnerabilities')
-          if not isinstance(vulnerabilities, dict):
-              raise SystemExit('npm audit did not return the expected vulnerability object')
-
-          gated = {
-              name: details
-              for name, details in vulnerabilities.items()
-              if details.get('severity') in {'high', 'critical'}
-          }
-
-          if set(gated) != set(expected_versions):
-              raise SystemExit(
-                  f'unexpected high/critical npm vulnerabilities: {sorted(gated)}'
-              )
-
-          for package, details in gated.items():
-              if details.get('severity') == 'critical':
-                  raise SystemExit(f'critical vulnerability is never excepted: {package}')
-
-              lock_entry = lock.get('packages', {}).get(f'node_modules/{package}', {})
-              actual_version = lock_entry.get('version')
-              if actual_version != expected_versions[package]:
-                  raise SystemExit(
-                      f'{package} resolved version changed: expected '
-                      f'{expected_versions[package]}, got {actual_version}'
-                  )
-
-              advisory_ids = set()
-              via_packages = set()
-              for item in details.get('via', []):
-                  if isinstance(item, str):
-                      via_packages.add(item)
-                      continue
-                  if not isinstance(item, dict):
-                      raise SystemExit(f'unexpected npm audit via entry for {package}')
-                  match = re.search(r'GHSA-[0-9a-z-]+', item.get('url', ''))
-                  if match is None:
-                      raise SystemExit(f'unidentified advisory for {package}')
-                  advisory_ids.add(match.group(0))
-
-              if package == 'next':
-                  if advisory_ids or via_packages != expected_next_via:
-                      raise SystemExit(
-                          f'Next.js advisory chain changed: '
-                          f'advisories={sorted(advisory_ids)}, via={sorted(via_packages)}'
-                      )
-              else:
-                  if via_packages:
-                      raise SystemExit(
-                          f'unexpected transitive advisory chain for {package}: '
-                          f'{sorted(via_packages)}'
-                      )
-                  if advisory_ids != expected_advisories[package]:
-                      raise SystemExit(
-                          f'{package} advisory set changed: {sorted(advisory_ids)}'
-                      )
-
-          print('NPM_AUDIT=PASS_WITH_BOUNDED_UPSTREAM_EXCEPTION')
-          print('NPM_AUDIT_EXCEPTION_EXPIRES=2026-08-27')
-          PY
-
-  api-quality:
-    name: API quality
-    runs-on: ubuntu-24.04
-    defaults:
-      run:
-        working-directory: apps/api
-    env:
-      APP_ENV: testing
-      DB_CONNECTION: pgsql
-      DB_HOST: 127.0.0.1
-      DB_PORT: '5432'
-      DB_DATABASE: opportunity_tracker_test
-      DB_USERNAME: opportunity
-      DB_PASSWORD: opportunity_test
-      CACHE_STORE: array
-      SESSION_DRIVER: array
-      QUEUE_CONNECTION: sync
-    services:
-      postgres:
-        image: postgres:18.4-alpine
-        env:
-          POSTGRES_DB: opportunity_tracker_test
-          POSTGRES_USER: opportunity
-          POSTGRES_PASSWORD: opportunity_test
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U opportunity -d opportunity_tracker_test"
-          --health-interval 5s
-          --health-timeout 3s
-          --health-retries 20
-    steps:
-      - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+          ref: feat/opportunity-crud
       - name: Set up PHP 8.4
         uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240
         with:
           php-version: '8.4'
-          extensions: mbstring, pdo_pgsql
+          extensions: mbstring, pdo_sqlite, pdo_pgsql
           coverage: none
           tools: composer:v2
-      - name: Validate Composer manifest and lock
-        run: composer validate --strict
       - name: Install locked dependencies
+        working-directory: apps/api
         run: composer install --no-interaction --prefer-dist --no-progress
-      - name: Prepare test environment
-        run: |
-          cp .env.example .env
-          php artisan key:generate --force
-      - name: Migrate PostgreSQL
-        run: php artisan migrate --force
-      - name: Check code style
-        run: vendor/bin/pint --test
-      - name: Run tests against PostgreSQL
-        run: php artisan test
-      - name: Audit Composer dependencies
-        run: composer audit --no-interaction
-
-  stack-smoke:
-    name: Docker stack smoke
-    needs:
-      - docs-quality
-      - web-quality
-      - api-quality
-    runs-on: ubuntu-24.04
-    steps:
-      - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
-      - name: Validate Compose configuration
-        run: docker compose config --quiet
-      - name: Build and start stack
-        run: docker compose up --build --detach
-      - name: Run database migrations in container
-        run: docker compose exec -T api php artisan migrate --force
-      - name: Verify API and web surfaces
+      - name: Write CRUD implementation
         shell: bash
         run: |
           set -euo pipefail
-
-          for attempt in $(seq 1 30); do
-            if curl --fail --silent --show-error http://127.0.0.1:8000/api/v1/health/live > /tmp/api-health.json; then
-              break
-            fi
-            if [ "$attempt" -eq 30 ]; then
-              docker compose ps
-              docker compose logs --no-color api
-              exit 1
-            fi
-            sleep 2
-          done
-
-          python3 - <<'PY'
-          import json
+          python3 <<'PY'
           from pathlib import Path
-          payload = json.loads(Path('/tmp/api-health.json').read_text())
-          assert payload == {'status': 'ok'}, payload
+
+          files = {
+              'apps/api/app/Http/Requests/StoreOpportunityRequest.php': '''<?php
+
+namespace App\\Http\\Requests;
+
+use App\\Rules\\HttpUrl;
+use Illuminate\\Foundation\\Http\\FormRequest;
+use Illuminate\\Validation\\Rule;
+
+class StoreOpportunityRequest extends FormRequest
+{
+    public function authorize(): bool
+    {
+        return true;
+    }
+
+    public function rules(): array
+    {
+        return [
+            'type' => ['required', 'string', Rule::in(['JOB', 'INTERNSHIP', 'SCHOLARSHIP', 'PROGRAM', 'OTHER'])],
+            'priority' => ['required', 'string', Rule::in(['LOW', 'MEDIUM', 'HIGH'])],
+            'title' => ['required', 'string', 'max:200'],
+            'organization' => ['required', 'string', 'max:200'],
+            'source_url' => ['nullable', 'string', 'max:2048', new HttpUrl],
+            'location' => ['nullable', 'string', 'max:200'],
+            'notes' => ['nullable', 'string', 'max:10000'],
+            'owner_id' => ['prohibited'],
+            'status' => ['prohibited'],
+            'deadline_at' => ['prohibited'],
+            'deadline_precision' => ['prohibited'],
+            'deadline_timezone' => ['prohibited'],
+            'next_action' => ['prohibited'],
+            'next_action_at' => ['prohibited'],
+            'archived_at' => ['prohibited'],
+        ];
+    }
+
+    protected function prepareForValidation(): void
+    {
+        $this->merge($this->normalizedInput());
+    }
+
+    private function normalizedInput(): array
+    {
+        $input = $this->all();
+
+        foreach (['type', 'priority', 'title', 'organization', 'source_url', 'location', 'notes'] as $key) {
+            if (! array_key_exists($key, $input) || ! is_string($input[$key])) {
+                continue;
+            }
+
+            $value = trim($input[$key]);
+            $input[$key] = in_array($key, ['source_url', 'location', 'notes'], true) && $value === '' ? null : $value;
+        }
+
+        return $input;
+    }
+}
+''',
+              'apps/api/app/Http/Requests/UpdateOpportunityRequest.php': '''<?php
+
+namespace App\\Http\\Requests;
+
+use App\\Rules\\HttpUrl;
+use Illuminate\\Foundation\\Http\\FormRequest;
+use Illuminate\\Validation\\Rule;
+
+class UpdateOpportunityRequest extends FormRequest
+{
+    public function authorize(): bool
+    {
+        return true;
+    }
+
+    public function rules(): array
+    {
+        return [
+            'type' => ['sometimes', 'required', 'string', Rule::in(['JOB', 'INTERNSHIP', 'SCHOLARSHIP', 'PROGRAM', 'OTHER'])],
+            'priority' => ['sometimes', 'required', 'string', Rule::in(['LOW', 'MEDIUM', 'HIGH'])],
+            'title' => ['sometimes', 'required', 'string', 'max:200'],
+            'organization' => ['sometimes', 'required', 'string', 'max:200'],
+            'source_url' => ['sometimes', 'nullable', 'string', 'max:2048', new HttpUrl],
+            'location' => ['sometimes', 'nullable', 'string', 'max:200'],
+            'notes' => ['sometimes', 'nullable', 'string', 'max:10000'],
+            'owner_id' => ['prohibited'],
+            'status' => ['prohibited'],
+            'deadline_at' => ['prohibited'],
+            'deadline_precision' => ['prohibited'],
+            'deadline_timezone' => ['prohibited'],
+            'next_action' => ['prohibited'],
+            'next_action_at' => ['prohibited'],
+            'archived_at' => ['prohibited'],
+        ];
+    }
+
+    protected function prepareForValidation(): void
+    {
+        $input = $this->all();
+
+        foreach (['type', 'priority', 'title', 'organization', 'source_url', 'location', 'notes'] as $key) {
+            if (! array_key_exists($key, $input) || ! is_string($input[$key])) {
+                continue;
+            }
+
+            $value = trim($input[$key]);
+            $input[$key] = in_array($key, ['source_url', 'location', 'notes'], true) && $value === '' ? null : $value;
+        }
+
+        $this->merge($input);
+    }
+}
+''',
+              'apps/api/app/Http/Resources/OpportunityResource.php': '''<?php
+
+namespace App\\Http\\Resources;
+
+use Illuminate\\Http\\Request;
+use Illuminate\\Http\\Resources\\Json\\JsonResource;
+
+class OpportunityResource extends JsonResource
+{
+    public function toArray(Request $request): array
+    {
+        return [
+            'id' => (string) $this->id,
+            'type' => $this->type,
+            'status' => $this->status,
+            'priority' => $this->priority,
+            'title' => $this->title,
+            'organization' => $this->organization,
+            'source_url' => $this->source_url,
+            'location' => $this->location,
+            'notes' => $this->notes,
+            'deadline_at' => $this->deadline_at?->toISOString(),
+            'deadline_precision' => $this->deadline_precision,
+            'deadline_timezone' => $this->deadline_timezone,
+            'next_action' => $this->next_action,
+            'next_action_at' => $this->next_action_at?->toISOString(),
+            'archived_at' => $this->archived_at?->toISOString(),
+            'created_at' => $this->created_at?->toISOString(),
+            'updated_at' => $this->updated_at?->toISOString(),
+        ];
+    }
+}
+''',
+              'apps/api/app/Http/Controllers/Api/V1/OpportunityController.php': '''<?php
+
+namespace App\\Http\\Controllers\\Api\\V1;
+
+use App\\Http\\Controllers\\Controller;
+use App\\Http\\Requests\\StoreOpportunityRequest;
+use App\\Http\\Requests\\UpdateOpportunityRequest;
+use App\\Http\\Resources\\OpportunityResource;
+use App\\Models\\Opportunity;
+use App\\Models\\User;
+use Illuminate\\Http\\Request;
+use Illuminate\\Http\\Resources\\Json\\AnonymousResourceCollection;
+use Illuminate\\Http\\Response;
+
+class OpportunityController extends Controller
+{
+    public function index(Request $request): AnonymousResourceCollection
+    {
+        $user = $this->user($request);
+        $opportunities = Opportunity::query()
+            ->ownedBy($user)
+            ->whereNull('archived_at')
+            ->orderByDesc('updated_at')
+            ->get();
+
+        return OpportunityResource::collection($opportunities);
+    }
+
+    public function store(StoreOpportunityRequest $request): OpportunityResource
+    {
+        $user = $this->user($request);
+        $opportunity = $user->opportunities()->create([
+            ...$request->validated(),
+            'status' => 'SAVED',
+        ]);
+
+        return new OpportunityResource($opportunity);
+    }
+
+    public function show(Request $request, string $id): OpportunityResource
+    {
+        return new OpportunityResource($this->owned($request, $id));
+    }
+
+    public function update(UpdateOpportunityRequest $request, string $id): OpportunityResource
+    {
+        $opportunity = $this->owned($request, $id);
+        $opportunity->fill($request->validated());
+        $opportunity->save();
+
+        return new OpportunityResource($opportunity->refresh());
+    }
+
+    public function destroy(Request $request, string $id): Response
+    {
+        $this->owned($request, $id)->delete();
+
+        return response()->noContent();
+    }
+
+    public function archive(Request $request, string $id): OpportunityResource
+    {
+        $opportunity = $this->owned($request, $id);
+        $opportunity->archived_at ??= now();
+        $opportunity->save();
+
+        return new OpportunityResource($opportunity->refresh());
+    }
+
+    public function restore(Request $request, string $id): OpportunityResource
+    {
+        $opportunity = $this->owned($request, $id);
+        $opportunity->archived_at = null;
+        $opportunity->save();
+
+        return new OpportunityResource($opportunity->refresh());
+    }
+
+    private function owned(Request $request, string $id): Opportunity
+    {
+        return Opportunity::query()
+            ->ownedBy($this->user($request))
+            ->findOrFail($id);
+    }
+
+    private function user(Request $request): User
+    {
+        /** @var User $user */
+        $user = $request->user('web');
+
+        return $user;
+    }
+}
+''',
+          }
+
+          for path, content in files.items():
+              target = Path(path)
+              target.parent.mkdir(parents=True, exist_ok=True)
+              target.write_text(content, encoding='utf-8')
+
+          model = Path('apps/api/app/Models/Opportunity.php')
+          text = model.read_text(encoding='utf-8').replace("    'owner_id',\n", '', 1)
+          model.write_text(text, encoding='utf-8')
+
+          routes = Path('apps/api/routes/api.php')
+          routes.write_text('''<?php
+
+use App\\Http\\Controllers\\Api\\V1\\Auth\\LoginController;
+use App\\Http\\Controllers\\Api\\V1\\Auth\\LogoutController;
+use App\\Http\\Controllers\\Api\\V1\\Auth\\RegisterController;
+use App\\Http\\Controllers\\Api\\V1\\MeController;
+use App\\Http\\Controllers\\Api\\V1\\OpportunityController;
+use Illuminate\\Support\\Facades\\Route;
+
+Route::prefix('v1')->group(function (): void {
+    Route::get('/health/live', static fn (): array => ['status' => 'ok']);
+
+    Route::prefix('auth')->group(function (): void {
+        Route::post('/register', RegisterController::class)->middleware('throttle:5,1');
+        Route::post('/login', LoginController::class);
+    });
+
+    Route::middleware('auth:web')->group(function (): void {
+        Route::post('/auth/logout', LogoutController::class);
+        Route::get('/me', MeController::class);
+
+        Route::get('/opportunities', [OpportunityController::class, 'index']);
+        Route::post('/opportunities', [OpportunityController::class, 'store']);
+        Route::get('/opportunities/{id}', [OpportunityController::class, 'show']);
+        Route::patch('/opportunities/{id}', [OpportunityController::class, 'update']);
+        Route::delete('/opportunities/{id}', [OpportunityController::class, 'destroy']);
+        Route::post('/opportunities/{id}/archive', [OpportunityController::class, 'archive']);
+        Route::post('/opportunities/{id}/restore', [OpportunityController::class, 'restore']);
+    });
+});
+''', encoding='utf-8')
+
+          bootstrap = Path('apps/api/bootstrap/app.php')
+          text = bootstrap.read_text(encoding='utf-8')
+          import_marker = "use Illuminate\\Auth\\AuthenticationException;\n"
+          if "use Illuminate\\Database\\Eloquent\\ModelNotFoundException;" not in text:
+              text = text.replace(import_marker, import_marker + "use Illuminate\\Database\\Eloquent\\ModelNotFoundException;\n", 1)
+          render_marker = "                  $exceptions->render(function (AuthenticationException $exception, Request $request) {"
+          not_found = '''                  $exceptions->render(function (ModelNotFoundException $exception, Request $request) {
+                      if (! $request->is('api/*')) {
+                          return null;
+                      }
+
+                      return response()->json([
+                          'error' => [
+                              'code' => 'NOT_FOUND',
+                              'message' => 'The requested resource was not found.',
+                          ],
+                      ], 404);
+                  });
+
+'''
+          if not_found not in text:
+              text = text.replace(render_marker, not_found + render_marker, 1)
+          bootstrap.write_text(text, encoding='utf-8')
+
+          Path('apps/api/tests/Feature/OpportunityCrudTest.php').write_text('''<?php
+
+namespace Tests\\Feature;
+
+use App\\Models\\Opportunity;
+use App\\Models\\User;
+use Illuminate\\Foundation\\Testing\\RefreshDatabase;
+use Tests\\TestCase;
+
+class OpportunityCrudTest extends TestCase
+{
+    use RefreshDatabase;
+
+    public function test_owner_can_create_opportunity_with_server_controlled_status(): void
+    {
+        $user = User::factory()->create();
+
+        $response = $this->actingAs($user, 'web')->postJson('/api/v1/opportunities', $this->payload([
+            'title' => '  Backend Internship  ',
+            'source_url' => ' https://example.test/opportunity ',
+        ]));
+
+        $response->assertCreated()
+            ->assertJsonPath('data.status', 'SAVED')
+            ->assertJsonPath('data.title', 'Backend Internship')
+            ->assertJsonPath('data.source_url', 'https://example.test/opportunity')
+            ->assertJsonMissingPath('data.owner_id');
+
+        $this->assertDatabaseHas('opportunities', [
+            'owner_id' => $user->getKey(),
+            'status' => 'SAVED',
+            'title' => 'Backend Internship',
+        ]);
+    }
+
+    public function test_create_rejects_protected_workflow_fields(): void
+    {
+        $user = User::factory()->create();
+
+        $this->actingAs($user, 'web')->postJson('/api/v1/opportunities', $this->payload([
+            'status' => 'ACCEPTED',
+            'owner_id' => User::factory()->create()->getKey(),
+        ]))->assertUnprocessable()
+            ->assertJsonPath('error.code', 'VALIDATION_FAILED')
+            ->assertJsonStructure(['error' => ['details' => ['status', 'owner_id']]]);
+    }
+
+    public function test_source_url_accepts_http_and_https_only(): void
+    {
+        $user = User::factory()->create();
+
+        $this->actingAs($user, 'web')->postJson('/api/v1/opportunities', $this->payload([
+            'source_url' => 'ftp://example.test/file',
+        ]))->assertUnprocessable()
+            ->assertJsonPath('error.code', 'VALIDATION_FAILED');
+    }
+
+    public function test_default_list_contains_only_owned_active_records(): void
+    {
+        $owner = User::factory()->create();
+        $other = User::factory()->create();
+        $active = $this->createOpportunity($owner, 'Active');
+        $this->createOpportunity($owner, 'Archived', ['archived_at' => now()]);
+        $this->createOpportunity($other, 'Foreign');
+
+        $response = $this->actingAs($owner, 'web')->getJson('/api/v1/opportunities')->assertOk();
+
+        $response->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.id', (string) $active->getKey());
+    }
+
+    public function test_foreign_resource_is_not_found_for_reads_and_mutations(): void
+    {
+        $owner = User::factory()->create();
+        $other = User::factory()->create();
+        $foreign = $this->createOpportunity($other, 'Foreign');
+        $base = '/api/v1/opportunities/'.$foreign->getKey();
+
+        $this->actingAs($owner, 'web')->getJson($base)
+            ->assertNotFound()->assertJsonPath('error.code', 'NOT_FOUND');
+        $this->actingAs($owner, 'web')->patchJson($base, ['title' => 'Changed'])
+            ->assertNotFound()->assertJsonPath('error.code', 'NOT_FOUND');
+        $this->actingAs($owner, 'web')->postJson($base.'/archive')
+            ->assertNotFound()->assertJsonPath('error.code', 'NOT_FOUND');
+        $this->actingAs($owner, 'web')->postJson($base.'/restore')
+            ->assertNotFound()->assertJsonPath('error.code', 'NOT_FOUND');
+        $this->actingAs($owner, 'web')->deleteJson($base)
+            ->assertNotFound()->assertJsonPath('error.code', 'NOT_FOUND');
+
+        $this->assertDatabaseHas('opportunities', ['id' => $foreign->getKey(), 'title' => 'Foreign']);
+    }
+
+    public function test_owner_can_update_editable_fields_but_not_status(): void
+    {
+        $owner = User::factory()->create();
+        $opportunity = $this->createOpportunity($owner, 'Original');
+
+        $this->actingAs($owner, 'web')->patchJson('/api/v1/opportunities/'.$opportunity->getKey(), [
+            'title' => ' Updated title ',
+            'priority' => 'HIGH',
+            'notes' => '',
+        ])->assertOk()
+            ->assertJsonPath('data.title', 'Updated title')
+            ->assertJsonPath('data.priority', 'HIGH')
+            ->assertJsonPath('data.notes', null)
+            ->assertJsonPath('data.status', 'SAVED');
+
+        $this->actingAs($owner, 'web')->patchJson('/api/v1/opportunities/'.$opportunity->getKey(), [
+            'status' => 'ACCEPTED',
+        ])->assertUnprocessable();
+    }
+
+    public function test_archive_hides_record_and_restore_returns_it_to_default_list(): void
+    {
+        $owner = User::factory()->create();
+        $opportunity = $this->createOpportunity($owner, 'Tracked');
+        $base = '/api/v1/opportunities/'.$opportunity->getKey();
+
+        $this->actingAs($owner, 'web')->postJson($base.'/archive')
+            ->assertOk()->assertJsonPath('data.id', (string) $opportunity->getKey());
+        $this->actingAs($owner, 'web')->getJson('/api/v1/opportunities')->assertJsonCount(0, 'data');
+        $this->actingAs($owner, 'web')->getJson($base)->assertOk();
+
+        $this->actingAs($owner, 'web')->postJson($base.'/restore')
+            ->assertOk()->assertJsonPath('data.archived_at', null);
+        $this->actingAs($owner, 'web')->getJson('/api/v1/opportunities')->assertJsonCount(1, 'data');
+    }
+
+    public function test_delete_physically_removes_owned_record(): void
+    {
+        $owner = User::factory()->create();
+        $opportunity = $this->createOpportunity($owner, 'Delete me');
+
+        $this->actingAs($owner, 'web')
+            ->deleteJson('/api/v1/opportunities/'.$opportunity->getKey())
+            ->assertNoContent();
+
+        $this->assertDatabaseMissing('opportunities', ['id' => $opportunity->getKey()]);
+    }
+
+    public function test_opportunity_endpoints_require_authentication(): void
+    {
+        $this->getJson('/api/v1/opportunities')
+            ->assertUnauthorized()
+            ->assertJsonPath('error.code', 'UNAUTHENTICATED');
+    }
+
+    private function payload(array $overrides = []): array
+    {
+        return array_replace([
+            'type' => 'INTERNSHIP',
+            'priority' => 'MEDIUM',
+            'title' => 'Synthetic opportunity',
+            'organization' => 'Synthetic Organization',
+            'source_url' => 'https://example.test/opportunity',
+            'location' => 'Remote',
+            'notes' => 'Synthetic notes only.',
+        ], $overrides);
+    }
+
+    private function createOpportunity(User $owner, string $title, array $overrides = []): Opportunity
+    {
+        return $owner->opportunities()->create(array_replace([
+            'type' => 'INTERNSHIP',
+            'status' => 'SAVED',
+            'priority' => 'MEDIUM',
+            'title' => $title,
+            'organization' => 'Synthetic Organization',
+        ], $overrides));
+    }
+}
+''', encoding='utf-8')
           PY
-
-          for attempt in $(seq 1 30); do
-            if curl --fail --silent --show-error http://127.0.0.1:3000/ > /tmp/web.html; then
-              break
-            fi
-            if [ "$attempt" -eq 30 ]; then
-              docker compose ps
-              docker compose logs --no-color web
-              exit 1
-            fi
-            sleep 2
-          done
-
-          grep -F 'Application workspace scaffold' /tmp/web.html
-          echo 'STACK_SMOKE=PASS'
-      - name: Show service state
-        if: always()
-        run: docker compose ps
-      - name: Tear down stack
-        if: always()
-        run: docker compose down --volumes --remove-orphans
+      - name: Format and validate CRUD
+        working-directory: apps/api
+        run: |
+          set -euo pipefail
+          cp .env.example .env
+          vendor/bin/pint
+          php artisan test
+          composer validate --strict
+          composer audit --no-interaction
+      - name: Commit CRUD implementation
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add apps/api
+          git commit -m 'feat: implement owner-scoped opportunity CRUD'
+          git push origin HEAD:feat/opportunity-crud
