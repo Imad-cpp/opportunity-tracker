@@ -50,7 +50,7 @@ The public portfolio repository is released under the MIT License.
 
 ## D-013 — Use stable supported scaffold lines
 
-The V1 scaffold uses Next.js 16.2.x, Node.js 24 LTS, Laravel 13, PHP 8.4 and PostgreSQL 18.x. Preview/canary framework releases are excluded from the baseline. Exact resolved application dependencies are committed in lockfiles.
+The V1 scaffold uses Next.js 16.3.x, Node.js 24 LTS, Laravel 13, PHP 8.4 and PostgreSQL 18.x. Preview/canary framework releases are excluded from the baseline. Exact resolved application dependencies are committed in lockfiles.
 
 ## D-014 — Baseline CI mirrors both application boundaries
 
@@ -58,7 +58,7 @@ Permanent CI validates foundation documentation, performs locked frontend lint/t
 
 ## D-015 — Upstream npm security exceptions must be exact, bounded and expiring
 
-The stable Next.js 16.2.11 dependency tree currently reports high-severity advisories through its resolved `postcss` 8.4.31 and `sharp` 0.34.5 dependencies. CI does not disable `npm audit` and does not accept arbitrary high-severity findings. The temporary exception is limited to those exact resolved package versions, the exact currently-known GHSA identifiers and the expected Next.js transitive chain. Any new high/critical package, advisory, version change or critical-severity finding fails CI. The exception expires on 2026-08-27 and must be removed earlier if a stable Next.js release resolves the upstream findings. Preview/canary Next.js releases are not adopted solely to silence the audit.
+A temporary bounded exception was introduced while the stable Next.js 16.2.11 dependency tree reported high-severity findings through resolved `postcss` 8.4.31 and `sharp` 0.34.5 dependencies. It accepted only the exact known package versions, advisory set and transitive chain, rejected critical or unexpected findings, and was scheduled to expire on 2026-08-27. On 2026-08-14 the application moved to stable Next.js 16.3.1, resolving the production chain to patched PostCSS and Sharp releases. The temporary exception was removed immediately and permanent CI returned to a normal hard-fail `npm audit --omit=dev --audit-level=high` gate. Future exceptions, if ever unavoidable, must follow the same exact, bounded and expiring rule rather than weakening the audit globally.
 
 ## D-016 — Sanctum authentication is session-only in V1
 
