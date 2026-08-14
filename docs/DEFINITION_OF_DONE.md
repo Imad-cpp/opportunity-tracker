@@ -67,7 +67,7 @@ A V1 release is complete only when the same exact release commit satisfies the a
 
 - [x] README and architecture/security/data/API docs match the complete V1 implementation.
   - Product/browser, runtime, API, security, decision, roadmap and Definition-of-Done documentation are synchronized through the browser V1 and dependency-maintenance slices.
-- [ ] CHANGELOG and release notes are prepared.
-  - CHANGELOG is current; dedicated release notes remain to be prepared for the tag.
+- [x] CHANGELOG and release notes are prepared.
+  - `CHANGELOG.md` contains the dated `1.0.0` entry and `docs/RELEASE_NOTES_V1.0.0.md` contains the release summary, security model, stack, evidence requirements and deliberate non-goals.
 - [ ] Exact release commit is green before tag creation.
 - [ ] Tag/release points to that exact verified commit.
