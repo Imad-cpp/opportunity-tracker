@@ -1,0 +1,435 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Opportunity Tracker API",
+    "version": "1.0.0",
+    "description": "Owner-scoped V1 API. Browser authentication uses the first-party Laravel session established after Sanctum CSRF bootstrap."
+  },
+  "servers": [
+    {"url": "http://localhost:8000/api/v1", "description": "Local development"}
+  ],
+  "tags": [
+    {"name": "System"},
+    {"name": "Authentication"},
+    {"name": "Opportunities"},
+    {"name": "Dashboard"}
+  ],
+  "paths": {
+    "/health/live": {
+      "get": {
+        "operationId": "healthLive",
+        "tags": ["System"],
+        "summary": "Liveness probe",
+        "security": [],
+        "responses": {"200": {"description": "Application is live", "content": {"application/json": {"schema": {"type": "object", "required": ["status"], "properties": {"status": {"const": "ok"}}}}}}}
+      }
+    },
+    "/auth/register": {
+      "post": {
+        "operationId": "register",
+        "tags": ["Authentication"],
+        "summary": "Create an account and first-party session",
+        "security": [],
+        "requestBody": {"required": true, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/RegisterRequest"}}}},
+        "responses": {
+          "201": {"description": "Account created", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/AccountEnvelope"}}}},
+          "422": {"$ref": "#/components/responses/ValidationFailed"},
+          "429": {"$ref": "#/components/responses/RateLimited"}
+        }
+      }
+    },
+    "/auth/login": {
+      "post": {
+        "operationId": "login",
+        "tags": ["Authentication"],
+        "summary": "Start a first-party session",
+        "security": [],
+        "requestBody": {"required": true, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/LoginRequest"}}}},
+        "responses": {
+          "200": {"description": "Authenticated", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/AccountEnvelope"}}}},
+          "422": {"$ref": "#/components/responses/ValidationFailed"},
+          "429": {"$ref": "#/components/responses/RateLimited"}
+        }
+      }
+    },
+    "/auth/logout": {
+      "post": {
+        "operationId": "logout",
+        "tags": ["Authentication"],
+        "summary": "Invalidate the current session",
+        "security": [{"sessionCookie": []}],
+        "responses": {
+          "204": {"description": "Logged out"},
+          "401": {"$ref": "#/components/responses/Unauthenticated"},
+          "419": {"$ref": "#/components/responses/CsrfMismatch"}
+        }
+      }
+    },
+    "/me": {
+      "get": {
+        "operationId": "me",
+        "tags": ["Authentication"],
+        "summary": "Read the authenticated account",
+        "security": [{"sessionCookie": []}],
+        "responses": {
+          "200": {"description": "Current account", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/AccountEnvelope"}}}},
+          "401": {"$ref": "#/components/responses/Unauthenticated"}
+        }
+      }
+    },
+    "/dashboard/summary": {
+      "get": {
+        "operationId": "dashboardSummary",
+        "tags": ["Dashboard"],
+        "summary": "Read the action-first owner dashboard",
+        "security": [{"sessionCookie": []}],
+        "responses": {
+          "200": {"description": "Dashboard summary", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/DashboardEnvelope"}}}},
+          "401": {"$ref": "#/components/responses/Unauthenticated"}
+        }
+      }
+    },
+    "/opportunities": {
+      "get": {
+        "operationId": "listOpportunities",
+        "tags": ["Opportunities"],
+        "summary": "List, search and filter owned opportunities",
+        "security": [{"sessionCookie": []}],
+        "parameters": [
+          {"name": "q", "in": "query", "schema": {"type": "string", "maxLength": 120}},
+          {"name": "status", "in": "query", "schema": {"$ref": "#/components/schemas/OpportunityStatus"}},
+          {"name": "type", "in": "query", "schema": {"$ref": "#/components/schemas/OpportunityType"}},
+          {"name": "priority", "in": "query", "schema": {"$ref": "#/components/schemas/OpportunityPriority"}},
+          {"name": "archived", "in": "query", "schema": {"type": "boolean", "default": false}},
+          {"name": "deadline_from", "in": "query", "schema": {"type": "string", "format": "date"}},
+          {"name": "deadline_to", "in": "query", "schema": {"type": "string", "format": "date"}},
+          {"name": "page", "in": "query", "schema": {"type": "integer", "minimum": 1}}
+        ],
+        "responses": {
+          "200": {"description": "Paginated opportunities", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/OpportunityPage"}}}},
+          "401": {"$ref": "#/components/responses/Unauthenticated"},
+          "422": {"$ref": "#/components/responses/ValidationFailed"}
+        }
+      },
+      "post": {
+        "operationId": "createOpportunity",
+        "tags": ["Opportunities"],
+        "summary": "Create an owned opportunity",
+        "security": [{"sessionCookie": []}],
+        "requestBody": {"required": true, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/CreateOpportunityRequest"}}}},
+        "responses": {
+          "201": {"description": "Opportunity created", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/OpportunityEnvelope"}}}},
+          "401": {"$ref": "#/components/responses/Unauthenticated"},
+          "419": {"$ref": "#/components/responses/CsrfMismatch"},
+          "422": {"$ref": "#/components/responses/ValidationFailed"}
+        }
+      }
+    },
+    "/opportunities/{id}": {
+      "parameters": [{"$ref": "#/components/parameters/OpportunityId"}],
+      "get": {
+        "operationId": "getOpportunity",
+        "tags": ["Opportunities"],
+        "summary": "Read one owned opportunity",
+        "security": [{"sessionCookie": []}],
+        "responses": {
+          "200": {"description": "Opportunity", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/OpportunityEnvelope"}}}},
+          "401": {"$ref": "#/components/responses/Unauthenticated"},
+          "404": {"$ref": "#/components/responses/NotFound"}
+        }
+      },
+      "patch": {
+        "operationId": "updateOpportunity",
+        "tags": ["Opportunities"],
+        "summary": "Update editable opportunity fields",
+        "security": [{"sessionCookie": []}],
+        "requestBody": {"required": true, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/UpdateOpportunityRequest"}}}},
+        "responses": {
+          "200": {"description": "Updated opportunity", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/OpportunityEnvelope"}}}},
+          "401": {"$ref": "#/components/responses/Unauthenticated"},
+          "404": {"$ref": "#/components/responses/NotFound"},
+          "419": {"$ref": "#/components/responses/CsrfMismatch"},
+          "422": {"$ref": "#/components/responses/ValidationFailed"}
+        }
+      },
+      "delete": {
+        "operationId": "deleteOpportunity",
+        "tags": ["Opportunities"],
+        "summary": "Permanently delete an owned opportunity",
+        "security": [{"sessionCookie": []}],
+        "responses": {
+          "204": {"description": "Deleted"},
+          "401": {"$ref": "#/components/responses/Unauthenticated"},
+          "404": {"$ref": "#/components/responses/NotFound"},
+          "419": {"$ref": "#/components/responses/CsrfMismatch"}
+        }
+      }
+    },
+    "/opportunities/{id}/status": {
+      "parameters": [{"$ref": "#/components/parameters/OpportunityId"}],
+      "post": {
+        "operationId": "updateOpportunityStatus",
+        "tags": ["Opportunities"],
+        "summary": "Change lifecycle status",
+        "security": [{"sessionCookie": []}],
+        "requestBody": {"required": true, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/StatusUpdateRequest"}}}},
+        "responses": {
+          "200": {"description": "Updated opportunity", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/OpportunityEnvelope"}}}},
+          "401": {"$ref": "#/components/responses/Unauthenticated"},
+          "404": {"$ref": "#/components/responses/NotFound"},
+          "419": {"$ref": "#/components/responses/CsrfMismatch"},
+          "422": {"$ref": "#/components/responses/ValidationFailed"}
+        }
+      }
+    },
+    "/opportunities/{id}/archive": {
+      "parameters": [{"$ref": "#/components/parameters/OpportunityId"}],
+      "post": {
+        "operationId": "archiveOpportunity",
+        "tags": ["Opportunities"],
+        "summary": "Archive an owned opportunity",
+        "security": [{"sessionCookie": []}],
+        "responses": {
+          "200": {"description": "Archived opportunity", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/OpportunityEnvelope"}}}},
+          "401": {"$ref": "#/components/responses/Unauthenticated"},
+          "404": {"$ref": "#/components/responses/NotFound"},
+          "419": {"$ref": "#/components/responses/CsrfMismatch"}
+        }
+      }
+    },
+    "/opportunities/{id}/restore": {
+      "parameters": [{"$ref": "#/components/parameters/OpportunityId"}],
+      "post": {
+        "operationId": "restoreOpportunity",
+        "tags": ["Opportunities"],
+        "summary": "Restore an archived opportunity",
+        "security": [{"sessionCookie": []}],
+        "responses": {
+          "200": {"description": "Restored opportunity", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/OpportunityEnvelope"}}}},
+          "401": {"$ref": "#/components/responses/Unauthenticated"},
+          "404": {"$ref": "#/components/responses/NotFound"},
+          "419": {"$ref": "#/components/responses/CsrfMismatch"}
+        }
+      }
+    },
+    "/opportunities/{id}/events": {
+      "parameters": [{"$ref": "#/components/parameters/OpportunityId"}],
+      "get": {
+        "operationId": "listOpportunityEvents",
+        "tags": ["Opportunities"],
+        "summary": "Read user-facing opportunity history",
+        "security": [{"sessionCookie": []}],
+        "responses": {
+          "200": {"description": "Opportunity history", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/EventCollection"}}}},
+          "401": {"$ref": "#/components/responses/Unauthenticated"},
+          "404": {"$ref": "#/components/responses/NotFound"}
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "sessionCookie": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "opportunity-tracker-api-session",
+        "description": "Default local Laravel session-cookie name derived from APP_NAME; deployments may override SESSION_COOKIE. State-changing browser requests also require the Sanctum XSRF cookie/header handshake."
+      }
+    },
+    "parameters": {
+      "OpportunityId": {"name": "id", "in": "path", "required": true, "schema": {"type": "string", "format": "uuid"}}
+    },
+    "responses": {
+      "Unauthenticated": {"description": "Authentication required", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ErrorEnvelope"}}}},
+      "NotFound": {"description": "Missing or foreign resource", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ErrorEnvelope"}}}},
+      "CsrfMismatch": {"description": "CSRF token missing or invalid", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ErrorEnvelope"}}}},
+      "ValidationFailed": {"description": "Validation failed", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ErrorEnvelope"}}}},
+      "RateLimited": {"description": "Rate limit exceeded", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ErrorEnvelope"}}}}
+    },
+    "schemas": {
+      "OpportunityType": {"type": "string", "enum": ["JOB", "INTERNSHIP", "SCHOLARSHIP", "PROGRAM", "OTHER"]},
+      "OpportunityStatus": {"type": "string", "enum": ["SAVED", "PREPARING", "APPLIED", "INTERVIEWING", "OFFERED", "ACCEPTED", "REJECTED", "WITHDRAWN", "EXPIRED"]},
+      "OpportunityPriority": {"type": "string", "enum": ["LOW", "MEDIUM", "HIGH"]},
+      "DeadlinePrecision": {"type": "string", "enum": ["DATE", "DATETIME"]},
+      "DeadlineAttention": {"type": "string", "enum": ["OVERDUE", "DUE_SOON", "UPCOMING"]},
+      "OpportunityEventType": {"type": "string", "enum": ["CREATED", "UPDATED", "STATUS_CHANGED", "ARCHIVED", "RESTORED"]},
+      "Account": {
+        "type": "object", "additionalProperties": false,
+        "required": ["id", "name", "email", "timezone"],
+        "properties": {
+          "id": {"type": "string", "format": "uuid"},
+          "name": {"type": "string", "maxLength": 120},
+          "email": {"type": "string", "format": "email", "maxLength": 254},
+          "timezone": {"type": "string", "maxLength": 64}
+        }
+      },
+      "AccountEnvelope": {"type": "object", "required": ["data"], "properties": {"data": {"$ref": "#/components/schemas/Account"}}},
+      "RegisterRequest": {
+        "type": "object", "additionalProperties": false,
+        "required": ["name", "email", "password", "timezone"],
+        "properties": {
+          "name": {"type": "string", "maxLength": 120},
+          "email": {"type": "string", "format": "email", "maxLength": 254},
+          "password": {"type": "string", "format": "password", "minLength": 12, "description": "Must include mixed case, a number and a symbol."},
+          "timezone": {"type": "string", "maxLength": 64, "description": "IANA time-zone identifier."}
+        }
+      },
+      "LoginRequest": {
+        "type": "object", "additionalProperties": false,
+        "required": ["email", "password"],
+        "properties": {
+          "email": {"type": "string", "format": "email", "maxLength": 254},
+          "password": {"type": "string", "format": "password"}
+        }
+      },
+      "OpportunityEditableFields": {
+        "type": "object",
+        "properties": {
+          "type": {"$ref": "#/components/schemas/OpportunityType"},
+          "priority": {"$ref": "#/components/schemas/OpportunityPriority"},
+          "title": {"type": "string", "maxLength": 200},
+          "organization": {"type": "string", "maxLength": 200},
+          "source_url": {"type": ["string", "null"], "maxLength": 2048, "description": "HTTP(S) only."},
+          "location": {"type": ["string", "null"], "maxLength": 200},
+          "notes": {"type": ["string", "null"], "maxLength": 10000},
+          "next_action": {"type": ["string", "null"], "maxLength": 500},
+          "next_action_at": {"type": ["string", "null"], "format": "date-time"},
+          "deadline_at": {"type": ["string", "null"], "description": "Input is YYYY-MM-DD when precision=DATE or YYYY-MM-DDTHH:mm when precision=DATETIME."},
+          "deadline_precision": {"oneOf": [{"$ref": "#/components/schemas/DeadlinePrecision"}, {"type": "null"}]},
+          "deadline_timezone": {"type": ["string", "null"], "maxLength": 64, "description": "Required for DATETIME; omitted/null for DATE because account timezone applies."}
+        }
+      },
+      "CreateOpportunityRequest": {
+        "allOf": [
+          {"$ref": "#/components/schemas/OpportunityEditableFields"},
+          {"type": "object", "required": ["type", "priority", "title", "organization"]}
+        ]
+      },
+      "UpdateOpportunityRequest": {"$ref": "#/components/schemas/OpportunityEditableFields"},
+      "StatusUpdateRequest": {"type": "object", "additionalProperties": false, "required": ["status"], "properties": {"status": {"$ref": "#/components/schemas/OpportunityStatus"}}},
+      "Opportunity": {
+        "type": "object", "additionalProperties": false,
+        "required": ["id", "type", "status", "priority", "title", "organization", "source_url", "location", "notes", "deadline_at", "deadline_precision", "deadline_timezone", "deadline_attention", "next_action", "next_action_at", "archived_at", "created_at", "updated_at"],
+        "properties": {
+          "id": {"type": "string", "format": "uuid"},
+          "type": {"$ref": "#/components/schemas/OpportunityType"},
+          "status": {"$ref": "#/components/schemas/OpportunityStatus"},
+          "priority": {"$ref": "#/components/schemas/OpportunityPriority"},
+          "title": {"type": "string"},
+          "organization": {"type": "string"},
+          "source_url": {"type": ["string", "null"]},
+          "location": {"type": ["string", "null"]},
+          "notes": {"type": ["string", "null"]},
+          "deadline_at": {"type": ["string", "null"], "format": "date-time"},
+          "deadline_precision": {"oneOf": [{"$ref": "#/components/schemas/DeadlinePrecision"}, {"type": "null"}]},
+          "deadline_timezone": {"type": ["string", "null"]},
+          "deadline_attention": {"oneOf": [{"$ref": "#/components/schemas/DeadlineAttention"}, {"type": "null"}]},
+          "next_action": {"type": ["string", "null"]},
+          "next_action_at": {"type": ["string", "null"], "format": "date-time"},
+          "archived_at": {"type": ["string", "null"], "format": "date-time"},
+          "created_at": {"type": ["string", "null"], "format": "date-time"},
+          "updated_at": {"type": ["string", "null"], "format": "date-time"}
+        }
+      },
+      "OpportunityEnvelope": {"type": "object", "required": ["data"], "properties": {"data": {"$ref": "#/components/schemas/Opportunity"}}},
+      "OpportunityPage": {
+        "type": "object", "required": ["data", "links", "meta"],
+        "properties": {
+          "data": {"type": "array", "items": {"$ref": "#/components/schemas/Opportunity"}},
+          "links": {"type": "object", "additionalProperties": true},
+          "meta": {"type": "object", "additionalProperties": true}
+        }
+      },
+      "OpportunityEvent": {
+        "type": "object", "additionalProperties": false,
+        "required": ["id", "type", "from_status", "to_status", "changed_fields", "created_at"],
+        "properties": {
+          "id": {"type": "string", "format": "uuid"},
+          "type": {"$ref": "#/components/schemas/OpportunityEventType"},
+          "from_status": {"oneOf": [{"$ref": "#/components/schemas/OpportunityStatus"}, {"type": "null"}]},
+          "to_status": {"oneOf": [{"$ref": "#/components/schemas/OpportunityStatus"}, {"type": "null"}]},
+          "changed_fields": {"oneOf": [{"type": "array", "items": {"type": "string"}}, {"type": "null"}]},
+          "created_at": {"type": ["string", "null"], "format": "date-time"}
+        }
+      },
+      "EventCollection": {"type": "object", "required": ["data"], "properties": {"data": {"type": "array", "items": {"$ref": "#/components/schemas/OpportunityEvent"}}}},
+      "DashboardOpportunity": {
+        "type": "object", "additionalProperties": false,
+        "required": ["id", "type", "status", "priority", "title", "organization", "deadline_at", "deadline_precision", "deadline_timezone", "deadline_attention", "next_action", "next_action_at"],
+        "properties": {
+          "id": {"type": "string", "format": "uuid"},
+          "type": {"$ref": "#/components/schemas/OpportunityType"},
+          "status": {"$ref": "#/components/schemas/OpportunityStatus"},
+          "priority": {"$ref": "#/components/schemas/OpportunityPriority"},
+          "title": {"type": "string"},
+          "organization": {"type": "string"},
+          "deadline_at": {"type": ["string", "null"], "format": "date-time"},
+          "deadline_precision": {"oneOf": [{"$ref": "#/components/schemas/DeadlinePrecision"}, {"type": "null"}]},
+          "deadline_timezone": {"type": ["string", "null"]},
+          "deadline_attention": {"oneOf": [{"$ref": "#/components/schemas/DeadlineAttention"}, {"type": "null"}]},
+          "next_action": {"type": ["string", "null"]},
+          "next_action_at": {"type": ["string", "null"], "format": "date-time"}
+        }
+      },
+      "DashboardActivity": {
+        "type": "object", "additionalProperties": false,
+        "required": ["id", "type", "from_status", "to_status", "changed_fields", "created_at", "opportunity"],
+        "properties": {
+          "id": {"type": "string", "format": "uuid"},
+          "type": {"$ref": "#/components/schemas/OpportunityEventType"},
+          "from_status": {"oneOf": [{"$ref": "#/components/schemas/OpportunityStatus"}, {"type": "null"}]},
+          "to_status": {"oneOf": [{"$ref": "#/components/schemas/OpportunityStatus"}, {"type": "null"}]},
+          "changed_fields": {"oneOf": [{"type": "array", "items": {"type": "string"}}, {"type": "null"}]},
+          "created_at": {"type": ["string", "null"], "format": "date-time"},
+          "opportunity": {
+            "type": "object", "additionalProperties": false,
+            "required": ["id", "title", "organization", "status"],
+            "properties": {
+              "id": {"type": "string", "format": "uuid"},
+              "title": {"type": "string"},
+              "organization": {"type": "string"},
+              "status": {"$ref": "#/components/schemas/OpportunityStatus"}
+            }
+          }
+        }
+      },
+      "DashboardSummary": {
+        "type": "object", "additionalProperties": false,
+        "required": ["generated_at", "horizon_days", "status_counts", "due_soon", "overdue", "next_actions", "recent_activity"],
+        "properties": {
+          "generated_at": {"type": "string", "format": "date-time"},
+          "horizon_days": {"const": 7},
+          "status_counts": {
+            "type": "object", "additionalProperties": false,
+            "required": ["SAVED", "PREPARING", "APPLIED", "INTERVIEWING", "OFFERED"],
+            "properties": {
+              "SAVED": {"type": "integer", "minimum": 0},
+              "PREPARING": {"type": "integer", "minimum": 0},
+              "APPLIED": {"type": "integer", "minimum": 0},
+              "INTERVIEWING": {"type": "integer", "minimum": 0},
+              "OFFERED": {"type": "integer", "minimum": 0}
+            }
+          },
+          "due_soon": {"type": "array", "maxItems": 6, "items": {"$ref": "#/components/schemas/DashboardOpportunity"}},
+          "overdue": {"type": "array", "maxItems": 6, "items": {"$ref": "#/components/schemas/DashboardOpportunity"}},
+          "next_actions": {"type": "array", "maxItems": 6, "items": {"$ref": "#/components/schemas/DashboardOpportunity"}},
+          "recent_activity": {"type": "array", "maxItems": 8, "items": {"$ref": "#/components/schemas/DashboardActivity"}}
+        }
+      },
+      "DashboardEnvelope": {"type": "object", "required": ["data"], "properties": {"data": {"$ref": "#/components/schemas/DashboardSummary"}}},
+      "ErrorEnvelope": {
+        "type": "object", "required": ["error"],
+        "properties": {
+          "error": {
+            "type": "object", "required": ["code", "message"],
+            "properties": {
+              "code": {"type": "string"},
+              "message": {"type": "string"},
+              "details": {"type": "object", "additionalProperties": {"type": "array", "items": {"type": "string"}}}
+            }
+          }
+        }
+      }
+    }
+  }
+}
