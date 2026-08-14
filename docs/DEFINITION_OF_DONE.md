@@ -11,8 +11,8 @@ A V1 release is complete only when the same exact release commit satisfies the a
 - [x] Permanent delete removes the opportunity and dependent events.
 - [x] Search and V1 filters work together predictably.
 - [x] Dashboard shows due soon, overdue, active-status counts and recent activity.
-- [ ] Next action is visible in list/detail/dashboard where relevant.
-  - Backend capture/update, API representation and dashboard presentation are implemented; dedicated list/detail frontend surfaces remain open.
+- [x] Next action is visible in list/detail/dashboard where relevant.
+  - Browser E2E verifies the saved next action in detail and the dashboard next-actions region; the opportunity list also presents the next action when present.
 - [x] Date-only and exact-time deadline semantics are tested.
 
 ## Security and privacy
@@ -24,24 +24,24 @@ A V1 release is complete only when the same exact release commit satisfies the a
   - Session rotation/logout invalidation are covered at the application boundary, and running-stack CI verifies Sanctum CSRF bootstrap, trusted credentialed CORS, 419 rejection without the XSRF header and the stable `CSRF_TOKEN_MISMATCH` JSON envelope.
 - [x] CORS does not allow an unconfigured origin to become an allowed origin.
 - [x] URL scheme validation rejects non-HTTP(S) values.
-- [ ] User-authored notes are rendered as text, not HTML.
-  - Backend accepts bounded string notes; a note-rendering frontend surface does not exist yet.
-- [ ] Logs/tests/demos contain no secrets or real personal application data.
-  - Automated fixtures are synthetic and full Git history passes the Gitleaks gate; final release demo evidence remains open.
+- [x] User-authored notes are rendered as text, not HTML.
+  - Browser E2E stores literal HTML/script text, verifies the exact rendered text and verifies that no script element is created beneath the notes surface.
+- [x] Logs/tests/demos contain no secrets or real personal application data.
+  - Automated fixtures and browser E2E use synthetic account/application data, no E2E screenshots or videos are persisted by default, and full Git history passes the Gitleaks gate.
 
 ## Frontend
 
 - [x] Responsive mobile and desktop layouts.
-  - The dashboard uses responsive pipeline, attention, opportunity and activity layouts with explicit mobile breakpoints.
 - [x] Keyboard navigation and visible focus states.
 - [x] Loading, empty, error, success and disabled states.
-- [ ] Forms expose validation errors accessibly.
-  - Dashboard V1 has no form surface yet; this remains required when capture/edit UI is added.
+- [x] Forms expose validation errors accessibly.
+  - Authentication and opportunity forms expose a `role="alert"` summary and associate field errors through `aria-invalid` and `aria-describedby`.
 - [x] No core workflow depends on hover only.
 
 ## API and data
 
-- [ ] Database migrations and rollback path are reviewed for the full V1 schema.
+- [x] Database migrations and rollback path are reviewed for the full V1 schema.
+  - Permanent CI applies PostgreSQL migrations, rolls back the full current batch, reapplies it and verifies migration status.
 - [x] Useful owner/status/deadline/event indexes exist on the implemented persistence boundary.
 - [x] Pagination and allowlisted filtering are covered by tests.
 - [x] Stable identity/resource error envelopes are documented and exercised.
@@ -53,19 +53,21 @@ A V1 release is complete only when the same exact release commit satisfies the a
 ## Automated evidence
 
 - [x] Backend formatting/static analysis/tests are green.
-  - Formatting, PostgreSQL-backed tests and PHPStan level 1 are green; PHPStan runs from an isolated pinned toolchain without changing the application lockfile.
-- [ ] Frontend lint/typecheck/tests/build are green.
-  - Lint, typecheck and build are green for the dashboard surface; product-level frontend tests are not present yet.
+  - Formatting, PostgreSQL-backed tests and PHPStan level 1 are permanent CI gates; PHPStan runs from an isolated pinned toolchain without changing the application lockfile.
+- [x] Frontend lint/typecheck/tests/build are green.
+  - Locked frontend lint, typecheck and build run in Application Quality, while the Playwright workflow exercises the complete browser product journey against the Docker stack.
 - [x] Integration tests use PostgreSQL, not a different database engine as a substitute.
-- [ ] End-to-end demo proves register → create → update status → filter/dashboard → archive/restore → delete.
+- [x] End-to-end demo proves register → create → update status → filter/dashboard → archive/restore → delete.
+  - The Playwright V1 workflow performs this journey through the browser without API shortcuts and uses synthetic data.
 - [x] Dependency audit and secret-hygiene checks are green.
-  - Composer audit, the bounded web dependency gate and full-history Gitleaks scanning are active CI gates.
+  - Composer audit, unconditional `npm audit --omit=dev --audit-level=high`, and full-history Gitleaks scanning are permanent CI gates.
 - [x] CI actions are pinned and permissions are least-privilege for the permanent workflow.
 
 ## Release evidence
 
-- [ ] README and architecture/security/data/API docs match the complete V1 implementation.
-  - Product/API/security/decision/roadmap documentation is synchronized through hardening; remaining browser product surfaces and release evidence are still open.
+- [x] README and architecture/security/data/API docs match the complete V1 implementation.
+  - Product/browser, runtime, API, security, decision, roadmap and Definition-of-Done documentation are synchronized through the browser V1 and dependency-maintenance slices.
 - [ ] CHANGELOG and release notes are prepared.
+  - CHANGELOG is current; dedicated release notes remain to be prepared for the tag.
 - [ ] Exact release commit is green before tag creation.
 - [ ] Tag/release points to that exact verified commit.
