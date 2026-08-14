@@ -189,22 +189,28 @@ export default function DashboardApp() {
   const [error, setError] = useState<DashboardRequestError | Error | null>(null);
   const [refreshing, setRefreshing] = useState(false);
 
-  const load = useCallback(async (signal?: AbortSignal) => {
+  const load = useCallback(async () => {
     setError(null);
 
     try {
-      setSummary(await readDashboard(signal));
+      setSummary(await readDashboard());
     } catch (caught) {
-      if (caught instanceof DOMException && caught.name === "AbortError") return;
       setError(caught instanceof Error ? caught : new Error("The dashboard could not be loaded."));
     }
   }, []);
 
   useEffect(() => {
     const controller = new AbortController();
-    void load(controller.signal);
+
+    readDashboard(controller.signal)
+      .then((data) => setSummary(data))
+      .catch((caught) => {
+        if (caught instanceof DOMException && caught.name === "AbortError") return;
+        setError(caught instanceof Error ? caught : new Error("The dashboard could not be loaded."));
+      });
+
     return () => controller.abort();
-  }, [load]);
+  }, []);
 
   const refresh = useCallback(async () => {
     setRefreshing(true);
