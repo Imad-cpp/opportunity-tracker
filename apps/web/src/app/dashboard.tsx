@@ -1,13 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import {
-  DashboardActivity,
-  DashboardOpportunity,
-  DashboardRequestError,
-  DashboardSummary,
-  readDashboard,
-} from "@/lib/dashboard-api";
+import type { DashboardActivity, DashboardOpportunity, DashboardSummary } from "@/lib/dashboard-api";
+import { DashboardRequestError, readDashboard } from "@/lib/dashboard-api";
 
 const pipeline = ["SAVED", "PREPARING", "APPLIED", "INTERVIEWING", "OFFERED"] as const;
 
@@ -37,8 +32,11 @@ function formatMoment(value: string | null, timeZone?: string | null): string {
   if (!value) return "No date";
 
   return new Intl.DateTimeFormat(undefined, {
-    dateStyle: "medium",
-    timeStyle: "short",
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
     timeZone: timeZone || undefined,
     timeZoneName: "short",
   }).format(new Date(value));
@@ -156,7 +154,7 @@ function DashboardLoading() {
   return (
     <main className="workspace" aria-busy="true" aria-live="polite">
       <div className="loading-shell">
-        <span className="loading-mark" />
+        <span className="loading-mark" aria-hidden="true" />
         <p>Loading your application workspace…</p>
       </div>
     </main>
