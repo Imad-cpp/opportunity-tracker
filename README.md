@@ -84,12 +84,13 @@ The V1 HTTP boundary is frozen in OpenAPI 3.1 and checked against Laravel route/
 - [Engineering decisions](docs/DECISIONS.md)
 - [Definition of Done](docs/DEFINITION_OF_DONE.md)
 - [Roadmap](docs/ROADMAP.md)
+- [v1.0.0 release notes](docs/RELEASE_NOTES_V1.0.0.md)
 
 ## Status
 
 **Foundation through browser V1 evidence is implemented.** Identity, owner-scoped CRUD, workflow/history, search/filters/deadlines, the action-first dashboard, authenticated browser workflows, OpenAPI contract checks, static analysis, secret hygiene, CSRF/CORS evidence, full browser E2E and migration rollback/reapply evidence are complete slices.
 
-The remaining tagged-release work is the final Definition-of-Done/documentation audit, release notes and verification that the exact release commit is green before creating `v1.0.0`.
+The `v1.0.0` changelog entry and dedicated release notes are prepared. The remaining tagged-release gate is to verify the exact release commit is green and then create the tag/GitHub Release on that same verified commit.
 
 V1 uses Sanctum for first-party cookie/session authentication only; it does not issue personal access tokens.
 
