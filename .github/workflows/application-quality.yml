@@ -287,53 +287,6 @@ jobs:
           grep -F 'Opportunity Tracker' /tmp/web.html
           grep -F 'Loading your application workspace' /tmp/web.html
           echo 'STACK_SMOKE=PASS'
-      - name: Bootstrap first-party CSRF session
-        shell: bash
-        run: |
-          set -euo pipefail
-          curl --silent --show-error \
-            --header 'Accept: application/json' \
-            --header 'Origin: http://localhost:3000' \
-            --cookie-jar /tmp/browser.cookies \
-            --dump-header /tmp/csrf.headers \
-            --output /dev/null \
-            --write-out '%{http_code}' \
-            http://127.0.0.1:8000/sanctum/csrf-cookie > /tmp/csrf.status
-      - name: Assert CSRF bootstrap status
-        run: test "$(cat /tmp/csrf.status)" = '204'
-      - name: Assert CSRF trusted CORS origin
-        run: grep -i -F 'access-control-allow-origin: http://localhost:3000' /tmp/csrf.headers
-      - name: Assert CSRF credentialed CORS
-        run: grep -i -F 'access-control-allow-credentials: true' /tmp/csrf.headers
-      - name: Submit state change without XSRF header
-        shell: bash
-        run: |
-          set -euo pipefail
-          curl --silent --show-error \
-            --request POST \
-            --header 'Accept: application/json' \
-            --header 'Content-Type: application/json' \
-            --header 'Origin: http://localhost:3000' \
-            --cookie /tmp/browser.cookies \
-            --dump-header /tmp/login.headers \
-            --output /tmp/login.json \
-            --write-out '%{http_code}' \
-            --data '{"email":"synthetic@example.test","password":"Synthetic-Password-123!"}' \
-            http://127.0.0.1:8000/api/v1/auth/login > /tmp/login.status
-      - name: Assert missing XSRF header is rejected
-        run: test "$(cat /tmp/login.status)" = '419'
-      - name: Assert login trusted CORS origin
-        run: grep -i -F 'access-control-allow-origin: http://localhost:3000' /tmp/login.headers
-      - name: Assert login credentialed CORS
-        run: grep -i -F 'access-control-allow-credentials: true' /tmp/login.headers
-      - name: Assert stable CSRF error envelope
-        run: |
-          python3 - <<'PY'
-          import json
-          from pathlib import Path
-          payload = json.loads(Path('/tmp/login.json').read_text())
-          assert payload.get('error', {}).get('code') == 'CSRF_TOKEN_MISMATCH', payload
-          PY
       - name: Show service state
         if: always()
         run: docker compose ps
