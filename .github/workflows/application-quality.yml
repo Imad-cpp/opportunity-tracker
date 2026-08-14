@@ -259,8 +259,12 @@ jobs:
           assert payload == {'status': 'ok'}, payload
           PY
 
-          dashboard_status="$(curl --silent --show-error --output /tmp/dashboard-unauth.json --write-out '%{http_code}' http://127.0.0.1:8000/api/v1/dashboard/summary)"
-          test "${dashboard_status}" = '401'
+          dashboard_status="$(curl --silent --show-error --header 'Accept: application/json' --output /tmp/dashboard-unauth.json --write-out '%{http_code}' http://127.0.0.1:8000/api/v1/dashboard/summary)"
+          if [ "${dashboard_status}" != '401' ]; then
+            echo "DASHBOARD_UNAUTH_STATUS=${dashboard_status}"
+            docker compose logs --no-color --tail=80 api
+            exit 1
+          fi
           python3 - <<'PY'
           import json
           from pathlib import Path
