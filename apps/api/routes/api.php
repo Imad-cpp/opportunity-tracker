@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\V1\Auth\LoginController;
 use App\Http\Controllers\Api\V1\Auth\LogoutController;
 use App\Http\Controllers\Api\V1\Auth\RegisterController;
+use App\Http\Controllers\Api\V1\DashboardController;
 use App\Http\Controllers\Api\V1\MeController;
 use App\Http\Controllers\Api\V1\OpportunityController;
 use Illuminate\Support\Facades\Route;
@@ -18,6 +19,7 @@ Route::prefix('v1')->group(function (): void {
     Route::middleware('auth:web')->group(function (): void {
         Route::post('/auth/logout', LogoutController::class);
         Route::get('/me', MeController::class);
+        Route::get('/dashboard/summary', DashboardController::class);
 
         Route::get('/opportunities', [OpportunityController::class, 'index']);
         Route::post('/opportunities', [OpportunityController::class, 'store']);
