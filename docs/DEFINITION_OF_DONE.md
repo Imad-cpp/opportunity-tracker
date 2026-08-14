@@ -21,13 +21,13 @@ A V1 release is complete only when the same exact release commit satisfies the a
 - [x] Foreign opportunity UUIDs return `404` on reads and mutations, including history reads and workflow changes.
 - [x] Authentication endpoints are rate limited.
 - [ ] Session/CSRF behavior is fully tested at the browser boundary.
-  - Session rotation, logout invalidation and Sanctum CSRF-cookie bootstrap are covered. Browser-level rejection evidence remains open.
+  - Session rotation, logout invalidation and Sanctum CSRF-cookie bootstrap are covered. The running-stack CSRF/CORS assertion is now part of Application Quality and still requires final-head green evidence.
 - [x] CORS does not allow an unconfigured origin to become an allowed origin.
 - [x] URL scheme validation rejects non-HTTP(S) values.
 - [ ] User-authored notes are rendered as text, not HTML.
   - Backend accepts bounded string notes; a note-rendering frontend surface does not exist yet.
 - [ ] Logs/tests/demos contain no secrets or real personal application data.
-  - Current automated fixtures are synthetic; final release-wide secret/demo evidence remains open.
+  - Automated fixtures are synthetic and full Git history passes the Gitleaks gate; final release demo evidence remains open.
 
 ## Frontend
 
@@ -47,24 +47,25 @@ A V1 release is complete only when the same exact release commit satisfies the a
 - [x] Stable identity/resource error envelopes are documented and exercised.
 - [x] Workflow mutations and corresponding event writes are transactionally coupled.
 - [x] Event history is owner scoped and delete cascades dependent product events.
-- [ ] OpenAPI matches implemented V1 routes and schemas.
+- [x] OpenAPI matches implemented V1 routes and schemas.
+  - OpenAPI 3.1 is committed and contract CI checks route coverage, private/public security requirements, references and critical enums.
 
 ## Automated evidence
 
-- [ ] Backend formatting/static analysis/tests are green.
-  - Formatting and PostgreSQL-backed tests, including dashboard aggregation/endpoint tests, are green; static analysis is added in the hardening step.
+- [x] Backend formatting/static analysis/tests are green.
+  - Formatting, PostgreSQL-backed tests and PHPStan level 1 are green; PHPStan runs from an isolated pinned toolchain without changing the application lockfile.
 - [ ] Frontend lint/typecheck/tests/build are green.
   - Lint, typecheck and build are green for the dashboard surface; product-level frontend tests are not present yet.
 - [x] Integration tests use PostgreSQL, not a different database engine as a substitute.
 - [ ] End-to-end demo proves register → create → update status → filter/dashboard → archive/restore → delete.
-- [ ] Dependency audit and secret-hygiene checks are green.
-  - Composer audit and the bounded web dependency gate run now; full secret-hygiene evidence is added in hardening.
+- [x] Dependency audit and secret-hygiene checks are green.
+  - Composer audit, the bounded web dependency gate and full-history Gitleaks scanning are active CI gates.
 - [x] CI actions are pinned and permissions are least-privilege for the permanent workflow.
 
 ## Release evidence
 
 - [ ] README and architecture/security/data/API docs match the complete V1 implementation.
-  - Product/API/decision/roadmap documentation is synchronized through the dashboard slice; hardening and release steps remain intentionally open.
+  - Product/API/security/decision/roadmap documentation is synchronized through hardening; browser product completion and release evidence remain open.
 - [ ] CHANGELOG and release notes are prepared.
 - [ ] Exact release commit is green before tag creation.
 - [ ] Tag/release points to that exact verified commit.
