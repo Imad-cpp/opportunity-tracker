@@ -1,5 +1,5 @@
-import DashboardApp from "./dashboard";
+import ProductApp from "./product-app";
 
 export default function Home() {
-  return <DashboardApp />;
+  return <ProductApp />;
 }

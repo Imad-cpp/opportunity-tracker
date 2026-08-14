@@ -1,0 +1,80 @@
+name: Migration Rollback
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: migration-rollback-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  rollback-and-reapply:
+    name: PostgreSQL rollback and reapply
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: apps/api
+    env:
+      APP_ENV: testing
+      DB_CONNECTION: pgsql
+      DB_HOST: 127.0.0.1
+      DB_PORT: '5432'
+      DB_DATABASE: opportunity_tracker_rollback
+      DB_USERNAME: opportunity
+      DB_PASSWORD: opportunity_test
+      CACHE_STORE: array
+      SESSION_DRIVER: array
+      QUEUE_CONNECTION: sync
+    services:
+      postgres:
+        image: postgres:18.4-alpine
+        env:
+          POSTGRES_DB: opportunity_tracker_rollback
+          POSTGRES_USER: opportunity
+          POSTGRES_PASSWORD: opportunity_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U opportunity -d opportunity_tracker_rollback"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+      - name: Set up PHP 8.4
+        uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240
+        with:
+          php-version: '8.4'
+          extensions: mbstring, pdo_pgsql
+          coverage: none
+          tools: composer:v2
+      - name: Install locked dependencies
+        run: composer install --no-interaction --prefer-dist --no-progress
+      - name: Prepare application
+        run: |
+          cp .env.example .env
+          php artisan key:generate --force
+      - name: Apply full schema
+        run: php artisan migrate --force
+      - name: Roll back full fresh batch
+        run: php artisan migrate:rollback --force
+      - name: Reapply full schema
+        run: php artisan migrate --force
+      - name: Verify all migrations are applied
+        shell: bash
+        run: |
+          set -euo pipefail
+          php artisan migrate:status > /tmp/migration-status.txt
+          if grep -Eiq 'Pending|No' /tmp/migration-status.txt; then
+            cat /tmp/migration-status.txt
+            exit 1
+          fi
+          cat /tmp/migration-status.txt
+          echo 'MIGRATION_ROLLBACK=PASS'

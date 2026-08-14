@@ -24,6 +24,11 @@ const labels: Record<string, string> = {
   RESTORED: "Restored",
 };
 
+type DashboardAppProps = {
+  embedded?: boolean;
+  onUnauthenticated?: () => void;
+};
+
 function readable(value: string): string {
   return labels[value] ?? value.toLowerCase().replaceAll("_", " ").replace(/^./, (letter) => letter.toUpperCase());
 }
@@ -182,10 +187,24 @@ function DashboardFailure({ error, retry }: { error: DashboardRequestError | Err
   );
 }
 
-export default function DashboardApp() {
+export default function DashboardApp({ embedded = false, onUnauthenticated }: DashboardAppProps) {
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
   const [error, setError] = useState<DashboardRequestError | Error | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+
+  const handleFailure = useCallback(
+    (caught: unknown) => {
+      if (caught instanceof DOMException && caught.name === "AbortError") return;
+
+      const nextError = caught instanceof Error ? caught : new Error("The dashboard could not be loaded.");
+      if (nextError instanceof DashboardRequestError && nextError.status === 401 && onUnauthenticated) {
+        onUnauthenticated();
+        return;
+      }
+      setError(nextError);
+    },
+    [onUnauthenticated],
+  );
 
   const load = useCallback(async () => {
     setError(null);
@@ -193,22 +212,19 @@ export default function DashboardApp() {
     try {
       setSummary(await readDashboard());
     } catch (caught) {
-      setError(caught instanceof Error ? caught : new Error("The dashboard could not be loaded."));
+      handleFailure(caught);
     }
-  }, []);
+  }, [handleFailure]);
 
   useEffect(() => {
     const controller = new AbortController();
 
     readDashboard(controller.signal)
       .then((data) => setSummary(data))
-      .catch((caught) => {
-        if (caught instanceof DOMException && caught.name === "AbortError") return;
-        setError(caught instanceof Error ? caught : new Error("The dashboard could not be loaded."));
-      });
+      .catch(handleFailure);
 
     return () => controller.abort();
-  }, []);
+  }, [handleFailure]);
 
   const refresh = useCallback(async () => {
     setRefreshing(true);
@@ -225,19 +241,27 @@ export default function DashboardApp() {
   if (!summary) return <DashboardLoading />;
 
   return (
-    <main className="workspace">
-      <header className="app-header">
-        <div className="brand-lockup">
-          <span className="brand-mark" aria-hidden="true">OT</span>
-          <div>
-            <strong>Opportunity Tracker</strong>
-            <span>Personal application workspace</span>
+    <main className={`workspace${embedded ? " workspace--embedded" : ""}`}>
+      {!embedded ? (
+        <header className="app-header">
+          <div className="brand-lockup">
+            <span className="brand-mark" aria-hidden="true">OT</span>
+            <div>
+              <strong>Opportunity Tracker</strong>
+              <span>Personal application workspace</span>
+            </div>
           </div>
+          <button className="secondary-button" type="button" onClick={() => void refresh()} disabled={refreshing}>
+            {refreshing ? "Refreshing…" : "Refresh"}
+          </button>
+        </header>
+      ) : (
+        <div className="embedded-dashboard-actions">
+          <button className="secondary-button" type="button" onClick={() => void refresh()} disabled={refreshing}>
+            {refreshing ? "Refreshing…" : "Refresh dashboard"}
+          </button>
         </div>
-        <button className="secondary-button" type="button" onClick={() => void refresh()} disabled={refreshing}>
-          {refreshing ? "Refreshing…" : "Refresh"}
-        </button>
-      </header>
+      )}
 
       <section className="dashboard-hero" aria-labelledby="dashboard-title">
         <div>
@@ -329,10 +353,12 @@ export default function DashboardApp() {
         <ActivityList items={summary.recent_activity} />
       </section>
 
-      <footer className="workspace-footer">
-        <span>Private, owner-scoped workspace</span>
-        <span>Updated {formatMoment(summary.generated_at)}</span>
-      </footer>
+      {!embedded ? (
+        <footer className="workspace-footer">
+          <span>Private, owner-scoped workspace</span>
+          <span>Updated {formatMoment(summary.generated_at)}</span>
+        </footer>
+      ) : null}
     </main>
   );
 }
