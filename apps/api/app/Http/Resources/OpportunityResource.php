@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources;
 
+use App\Models\Opportunity;
 use App\Opportunities\DeadlineAttention;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -10,25 +11,28 @@ class OpportunityResource extends JsonResource
 {
     public function toArray(Request $request): array
     {
+        /** @var Opportunity $opportunity */
+        $opportunity = $this->resource;
+
         return [
-            'id' => (string) $this->id,
-            'type' => $this->type,
-            'status' => $this->status,
-            'priority' => $this->priority,
-            'title' => $this->title,
-            'organization' => $this->organization,
-            'source_url' => $this->source_url,
-            'location' => $this->location,
-            'notes' => $this->notes,
-            'deadline_at' => $this->deadline_at?->toISOString(),
-            'deadline_precision' => $this->deadline_precision,
-            'deadline_timezone' => $this->deadline_timezone,
-            'deadline_attention' => DeadlineAttention::for($this->resource),
-            'next_action' => $this->next_action,
-            'next_action_at' => $this->next_action_at?->toISOString(),
-            'archived_at' => $this->archived_at?->toISOString(),
-            'created_at' => $this->created_at?->toISOString(),
-            'updated_at' => $this->updated_at?->toISOString(),
+            'id' => (string) $opportunity->id,
+            'type' => $opportunity->type,
+            'status' => $opportunity->status,
+            'priority' => $opportunity->priority,
+            'title' => $opportunity->title,
+            'organization' => $opportunity->organization,
+            'source_url' => $opportunity->source_url,
+            'location' => $opportunity->location,
+            'notes' => $opportunity->notes,
+            'deadline_at' => $opportunity->deadline_at?->toISOString(),
+            'deadline_precision' => $opportunity->deadline_precision,
+            'deadline_timezone' => $opportunity->deadline_timezone,
+            'deadline_attention' => DeadlineAttention::for($opportunity),
+            'next_action' => $opportunity->next_action,
+            'next_action_at' => $opportunity->next_action_at?->toISOString(),
+            'archived_at' => $opportunity->archived_at?->toISOString(),
+            'created_at' => $opportunity->created_at?->toISOString(),
+            'updated_at' => $opportunity->updated_at?->toISOString(),
         ];
     }
 }
