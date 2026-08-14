@@ -52,9 +52,11 @@ jobs:
       - name: Assert CSRF bootstrap status
         run: test "$(cat /tmp/csrf.status)" = '204'
       - name: Assert CSRF trusted CORS origin
-        run: grep -i -F 'access-control-allow-origin: http://localhost:3000' /tmp/csrf.headers
+        run: |
+          grep -i -F 'access-control-allow-origin: http://localhost:3000' /tmp/csrf.headers
       - name: Assert CSRF credentialed CORS
-        run: grep -i -F 'access-control-allow-credentials: true' /tmp/csrf.headers
+        run: |
+          grep -i -F 'access-control-allow-credentials: true' /tmp/csrf.headers
       - name: Submit state change without XSRF header
         shell: bash
         run: |
@@ -73,9 +75,11 @@ jobs:
       - name: Assert missing XSRF header is rejected
         run: test "$(cat /tmp/login.status)" = '419'
       - name: Assert login trusted CORS origin
-        run: grep -i -F 'access-control-allow-origin: http://localhost:3000' /tmp/login.headers
+        run: |
+          grep -i -F 'access-control-allow-origin: http://localhost:3000' /tmp/login.headers
       - name: Assert login credentialed CORS
-        run: grep -i -F 'access-control-allow-credentials: true' /tmp/login.headers
+        run: |
+          grep -i -F 'access-control-allow-credentials: true' /tmp/login.headers
       - name: Assert stable CSRF error envelope
         run: |
           python3 - <<'PY'
