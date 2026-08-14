@@ -6,7 +6,7 @@ export type DashboardOpportunity = {
   title: string;
   organization: string;
   deadline_at: string | null;
-  deadline_precision: "DATE" | "EXACT" | null;
+  deadline_precision: "DATE" | "DATETIME" | null;
   deadline_timezone: string | null;
   deadline_attention: "OVERDUE" | "DUE_SOON" | "UPCOMING" | null;
   next_action: string | null;
