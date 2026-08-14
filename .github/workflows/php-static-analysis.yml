@@ -1,0 +1,38 @@
+name: PHP Static Analysis
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: php-static-analysis-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  phpstan:
+    name: PHPStan
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+      - name: Set up PHP 8.4
+        uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240
+        with:
+          php-version: '8.4'
+          extensions: mbstring, pdo_pgsql
+          coverage: none
+          tools: composer:v2
+      - name: Install locked application dependencies
+        working-directory: apps/api
+        run: composer install --no-interaction --prefer-dist --no-progress
+      - name: Install isolated PHPStan toolchain
+        env:
+          COMPOSER_HOME: /tmp/phpstan-composer
+        run: composer global require phpstan/phpstan:2.2.6 --no-interaction --no-progress --prefer-dist
+      - name: Analyse application PHP
+        run: /tmp/phpstan-composer/vendor/bin/phpstan analyse apps/api/app apps/api/routes --level=1 --no-progress --memory-limit=512M --autoload-file=apps/api/vendor/autoload.php
