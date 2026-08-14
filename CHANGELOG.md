@@ -11,5 +11,7 @@
 - Search across title and organization with allowlisted filters and 20-item pagination.
 - Date-only and exact deadline semantics with time-zone-aware boundaries.
 - Derived overdue, due-soon and upcoming attention states.
-- Focused PostgreSQL-backed tests for search, filters, pagination and deadline behavior.
+- Action-first owner-scoped dashboard summary with active pipeline counts, overdue/due-soon deadlines, next actions and recent activity.
+- Responsive Next.js dashboard surface with loading, empty, error, refresh, disabled, keyboard-focus and reduced-motion states.
+- PostgreSQL-backed dashboard aggregation and authenticated endpoint contract tests using synthetic data.
 - CI diagnostics for dependency-audit failures.
