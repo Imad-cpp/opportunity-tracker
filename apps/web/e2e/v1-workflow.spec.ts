@@ -75,9 +75,10 @@ test("register through delete works through the browser", async ({ page }) => {
   await expect(page.getByText(title, { exact: true })).toBeVisible();
 
   await page.getByRole("button", { name: "Dashboard", exact: true }).click();
-  await expect(page.getByRole("heading", { name: "Next actions" })).toBeVisible();
-  await expect(page.getByText(title, { exact: true })).toBeVisible();
-  await expect(page.getByText("Finish portfolio review", { exact: true })).toBeVisible();
+  const nextActions = page.getByRole("region", { name: "Next actions" });
+  await expect(nextActions).toBeVisible();
+  await expect(nextActions.getByText(title, { exact: true })).toBeVisible();
+  await expect(nextActions.getByText("Finish portfolio review", { exact: true })).toBeVisible();
 
   await page.getByRole("button", { name: "Opportunities", exact: true }).click();
   await page.getByRole("button", { name: new RegExp(title) }).click();
