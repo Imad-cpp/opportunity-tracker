@@ -259,6 +259,15 @@ jobs:
           assert payload == {'status': 'ok'}, payload
           PY
 
+          dashboard_status="$(curl --silent --show-error --output /tmp/dashboard-unauth.json --write-out '%{http_code}' http://127.0.0.1:8000/api/v1/dashboard/summary)"
+          test "${dashboard_status}" = '401'
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          payload = json.loads(Path('/tmp/dashboard-unauth.json').read_text())
+          assert payload.get('error', {}).get('code') == 'UNAUTHENTICATED', payload
+          PY
+
           for attempt in $(seq 1 30); do
             if curl --fail --silent --show-error http://127.0.0.1:3000/ > /tmp/web.html; then
               break
@@ -271,7 +280,8 @@ jobs:
             sleep 2
           done
 
-          grep -F 'Application workspace scaffold' /tmp/web.html
+          grep -F 'Opportunity Tracker' /tmp/web.html
+          grep -F 'Loading your application workspace' /tmp/web.html
           echo 'STACK_SMOKE=PASS'
       - name: Show service state
         if: always()
