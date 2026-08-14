@@ -20,8 +20,8 @@ A V1 release is complete only when the same exact release commit satisfies the a
 - [x] Every implemented opportunity resource is server-side owner scoped.
 - [x] Foreign opportunity UUIDs return `404` on reads and mutations, including history reads and workflow changes.
 - [x] Authentication endpoints are rate limited.
-- [ ] Session/CSRF behavior is fully tested at the browser boundary.
-  - Session rotation, logout invalidation and Sanctum CSRF-cookie bootstrap are covered. The running-stack CSRF/CORS assertion is now part of Application Quality and still requires final-head green evidence.
+- [x] Session/CSRF behavior is tested at the browser boundary.
+  - Session rotation/logout invalidation are covered at the application boundary, and running-stack CI verifies Sanctum CSRF bootstrap, trusted credentialed CORS, 419 rejection without the XSRF header and the stable `CSRF_TOKEN_MISMATCH` JSON envelope.
 - [x] CORS does not allow an unconfigured origin to become an allowed origin.
 - [x] URL scheme validation rejects non-HTTP(S) values.
 - [ ] User-authored notes are rendered as text, not HTML.
@@ -65,7 +65,7 @@ A V1 release is complete only when the same exact release commit satisfies the a
 ## Release evidence
 
 - [ ] README and architecture/security/data/API docs match the complete V1 implementation.
-  - Product/API/security/decision/roadmap documentation is synchronized through hardening; browser product completion and release evidence remain open.
+  - Product/API/security/decision/roadmap documentation is synchronized through hardening; remaining browser product surfaces and release evidence are still open.
 - [ ] CHANGELOG and release notes are prepared.
 - [ ] Exact release commit is green before tag creation.
 - [ ] Tag/release points to that exact verified commit.
