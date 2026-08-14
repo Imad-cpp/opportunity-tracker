@@ -75,4 +75,4 @@ Planned where applicable:
 - `FORBIDDEN` — 403 only for non-resource authorization cases
 - `DEPENDENCY_UNAVAILABLE` — 503
 
-Exact schemas will be frozen in OpenAPI before V1 release.
+The frozen V1 schemas and operation security requirements are committed in [`openapi.json`](openapi.json). Contract CI checks the Laravel route inventory, public/private session requirements, local references and critical enums against that artifact.

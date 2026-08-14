@@ -18,6 +18,7 @@ REQUIRED = [
     "docs/DECISIONS.md",
     "docs/DEFINITION_OF_DONE.md",
     "docs/ROADMAP.md",
+    "docs/openapi.json",
 ]
 IGNORED_DIRS = {
     ".git",

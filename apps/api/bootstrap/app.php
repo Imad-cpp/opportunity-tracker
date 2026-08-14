@@ -8,6 +8,7 @@ use Illuminate\Http\Exceptions\ThrottleRequestsException;
 use Illuminate\Http\Request;
 use Illuminate\Session\TokenMismatchException;
 use Illuminate\Validation\ValidationException;
+use Symfony\Component\HttpKernel\Exception\HttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 return Application::configure(basePath: dirname(__DIR__))
@@ -67,6 +68,21 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $exceptions->render(function (TokenMismatchException $exception, Request $request) {
             if (! $request->is('api/*')) {
+                return null;
+            }
+
+            return response()->json([
+                'error' => [
+                    'code' => 'CSRF_TOKEN_MISMATCH',
+                    'message' => 'The CSRF token is missing or invalid.',
+                ],
+            ], 419);
+        });
+
+        $exceptions->render(function (HttpException $exception, Request $request) {
+            if (! $request->is('api/*')
+                || $exception->getStatusCode() !== 419
+                || ! ($exception->getPrevious() instanceof TokenMismatchException)) {
                 return null;
             }
 

@@ -68,12 +68,17 @@ The repository is a monorepo. The web client and API stay separate at the applic
 - Synthetic data only in tests, screenshots and demos.
 - CI evidence must match the claims made in this repository.
 
+## Verification
+
+The V1 HTTP boundary is frozen in OpenAPI 3.1 and checked against Laravel route/security/enumeration sources. CI also runs PostgreSQL-backed application tests, locked dependency audits, PHPStan, strict PHP/PSR/platform checks, full-history Gitleaks scanning, Docker stack smoke and running-stack CSRF/CORS assertions.
+
 ## Documentation
 
 - [Product contract](docs/PRODUCT.md)
 - [Architecture](docs/ARCHITECTURE.md)
 - [Data model](docs/DATA_MODEL.md)
 - [API map](docs/API_MAP.md)
+- [OpenAPI contract](docs/openapi.json)
 - [Security model](docs/SECURITY_MODEL.md)
 - [Engineering decisions](docs/DECISIONS.md)
 - [Definition of Done](docs/DEFINITION_OF_DONE.md)
@@ -81,9 +86,9 @@ The repository is a monorepo. The web client and API stay separate at the applic
 
 ## Status
 
-**The action-first dashboard product slice is implemented.** The authenticated summary endpoint derives active pipeline counts, due-soon and overdue attention, next actions and recent owner-scoped activity directly from PostgreSQL. Summary payloads are deliberately minimal and do not copy owner identifiers or notes into dashboard data.
+**Foundation through contract hardening is implemented.** Identity, owner-scoped CRUD, workflow/history, search/filters/deadlines, the action-first dashboard, OpenAPI contract checks, static analysis, secret hygiene and browser CSRF/CORS evidence are complete roadmap slices.
 
-The Next.js surface now replaces the scaffold with a responsive dashboard that includes loading, empty, error, refresh, disabled, keyboard-focus and reduced-motion behavior. Identity, CRUD, workflow/history, search/filters/deadlines and dashboard are complete roadmap slices. Contract hardening and release evidence are next.
+The remaining V1 release work is product evidence rather than new infrastructure: authenticated browser entry, opportunity list/detail/create/edit surfaces, accessible validation and plain-text note rendering, product-level frontend tests, migration/rollback review and the reproducible end-to-end release demo. No `v1.0.0` tag should be created before those Definition-of-Done items are green on the exact release commit.
 
 V1 uses Sanctum for first-party cookie/session authentication only; it does not issue personal access tokens.
 

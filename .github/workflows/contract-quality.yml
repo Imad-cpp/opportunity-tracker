@@ -1,0 +1,50 @@
+name: Contract Quality
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: contract-quality-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  openapi-contract:
+    name: OpenAPI contract
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+      - name: Validate API contract
+        run: python3 scripts/check-contract.py
+
+  php-structure:
+    name: PHP structural checks
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: apps/api
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+      - name: Set up PHP 8.4
+        uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240
+        with:
+          php-version: '8.4'
+          extensions: mbstring, pdo_pgsql
+          coverage: none
+          tools: composer:v2
+      - name: Install locked dependencies
+        run: composer install --no-interaction --prefer-dist --no-progress
+      - name: Validate PHP syntax
+        shell: bash
+        run: find app routes database tests -type f -name '*.php' -print0 | xargs -0 -n1 php -l
+      - name: Validate strict PSR autoloading
+        run: composer dump-autoload --no-interaction --strict-psr --strict-ambiguous
+      - name: Validate platform requirements
+        run: composer check-platform-reqs
