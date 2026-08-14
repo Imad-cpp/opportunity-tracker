@@ -2,72 +2,74 @@
 
 ## Assets
 
-V1 stores personal application-tracking data: account identity, opportunity metadata, deadlines, notes and activity history. It intentionally does not store resumes, identity documents, email inbox contents or uploaded files.
+V1 stores account identity and personal opportunity-tracking data: opportunity metadata, deadlines, plain-text notes, next actions and user-facing activity history. It intentionally excludes resumes, identity documents, uploads and inbox contents.
 
 ## Trust boundaries
 
 - Browser input is untrusted.
-- URL fields are untrusted data, not instructions to fetch remote content.
 - Client-side filtering and hidden controls are not authorization.
+- URL fields are data only and are never fetched server-side in V1.
 - PostgreSQL is authoritative for ownership and lifecycle state.
+- Dashboard aggregation is owner-scoped server-side.
 
 ## Authentication
 
-- Laravel Sanctum first-party session cookies.
+- Laravel Sanctum provides first-party cookie/session authentication.
 - V1 does not issue personal access tokens.
 - Registration and login regenerate the session identifier.
-- Logout invalidates the current server-side session and regenerates the CSRF token.
-- `/sanctum/csrf-cookie` provides the first-party SPA CSRF bootstrap.
-- CSRF middleware remains enabled for state-changing stateful browser requests.
-- Laravel's PHPUnit environment bypasses CSRF verification by framework design. Browser-level CSRF enforcement evidence therefore remains a release-hardening item.
-- Registration and failed login attempts have bounded request rates.
-- Deployed environments must use secure cookies over HTTPS. Local Compose uses HTTP-only local settings.
+- Logout invalidates the current server-side session and regenerates CSRF state.
+- `/sanctum/csrf-cookie` provides the SPA CSRF bootstrap.
+- State-changing stateful browser requests remain protected by CSRF middleware.
+- Authentication endpoints have bounded request rates.
+- Deployed environments must use secure cookies over HTTPS; local Compose uses localhost HTTP settings only.
 
 ## Authorization
 
-Every implemented opportunity endpoint starts from the authenticated owner's query scope. Collection reads and object reads/mutations use the same owner-scoped boundary.
+Every private product route requires the authenticated session. Opportunity reads and mutations, event history and dashboard aggregation are owner-scoped server-side.
 
-A foreign opportunity UUID returns the same stable `404 NOT_FOUND` response as a missing UUID. Automated tests cover foreign read, update, archive, restore and delete operations.
+Foreign opportunity UUIDs use the same stable `404 NOT_FOUND` response as missing UUIDs. Ownership is assigned through the authenticated user's relationship; `owner_id` is not a writable product field.
 
-`owner_id` is not mass assignable. New opportunities are created through the authenticated user's relationship, so ownership comes from the session identity rather than request payload data.
+Dashboard summaries intentionally omit owner identifiers and note bodies. Dashboard activity also omits actor identifiers.
 
 ## Input rules
 
-Implemented account rules:
+Implemented account rules include bounded names, normalized RFC email addresses, strong registration passwords and IANA time zones.
 
-- Names, normalized RFC email addresses and passwords are bounded/validated server-side.
-- Registration passwords require at least 12 characters with mixed case, a number and a symbol.
-- Account time zones must match an IANA time-zone identifier.
+Implemented opportunity rules include:
 
-Implemented ordinary opportunity CRUD rules:
+- fixed type, status and priority allowlists;
+- required bounded title and organization on create;
+- bounded optional location, notes and next action;
+- HTTP(S)-only source URLs;
+- server-controlled initial `SAVED` status and a dedicated status endpoint;
+- `DATE` versus `DATETIME` deadline precision with time-zone validation and UTC normalization for exact date/time input;
+- bounded title/organization search;
+- allowlisted status, type, priority, archive state, deadline range and page filters;
+- rejection of reversed deadline ranges and arbitrary SQL sort/column input.
 
-- `type` and `priority` use fixed allowlists.
-- Title and organization are required, trimmed and bounded.
-- Location and notes are optional bounded strings; empty optional values normalize to null.
-- Source URLs must use a valid `http` or `https` URL.
-- The API does not fetch supplied source URLs in V1.
-- `owner_id`, `status`, deadline fields, next-action fields and `archived_at` are not accepted through ordinary CRUD payloads.
-- Create assigns `SAVED` server-side. Status changes are reserved for the workflow/history endpoint.
+## History and deletion
 
-Planned rules:
+Workflow mutations and corresponding product-history events commit together. Repeated no-op requests do not manufacture duplicate history. `UPDATED` history records changed field names rather than copied user content.
 
-- Deadline precision/time-zone validation and normalization.
-- Next-action validation.
-- Search, sort and filter allowlists.
+Permanent delete removes the owned opportunity and dependent product-history events through the database cascade. Archive is reversible and preserves history.
 
-## Privacy and logging
+## CORS and browser boundary
 
-Logs must not contain passwords, session cookies, CSRF tokens, authorization headers or full request bodies.
+CORS uses an explicit first-party allowlist and supports credentials for the SPA session flow. Automated tests reject an unconfigured origin. Stack smoke verifies the configured first-party origin, credentialed CORS and CSRF rejection behavior against the running Docker application.
 
-Event history is product history, not a forensic security log. Test/demo data must be synthetic.
+## Contract and CI controls
 
-## Deletion
+- The committed OpenAPI 3.1 contract documents the implemented V1 HTTP boundary.
+- Contract CI checks Laravel route coverage, public/private session requirements, local references and critical enums.
+- Git history is scanned by a pinned Gitleaks action.
+- PHP syntax, strict PSR autoloading and platform requirements are checked independently from feature tests.
+- PHPStan runs from an isolated pinned toolchain without modifying the application lockfile.
+- npm and Composer install from committed lockfiles; dependency audits remain blocking except for the exact documented expiring web-framework exception.
+- Permanent GitHub Actions are pinned to immutable commit SHAs.
 
-Permanent delete currently removes the owned opportunity row. Once `opportunity_events` is implemented, dependent product-history events must be deleted with it. Archive remains the reversible retention mechanism and does not change status.
+## Data-handling evidence
 
-## CORS
-
-CORS is configured from an explicit first-party allowlist and supports credentials for the SPA session flow. Automated tests verify that an unconfigured origin is not reflected as an allowed origin.
+Tests and demos use synthetic data. Application history is product history, not a forensic security log. Sensitive authentication material is not part of product payloads or dashboard responses.
 
 ## V1 excluded surfaces
 
