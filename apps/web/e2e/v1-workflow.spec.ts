@@ -62,7 +62,10 @@ test("register through delete works through the browser", async ({ page }) => {
   await page.getByRole("button", { name: "Save changes" }).click();
   await expect(page.getByText("Hybrid", { exact: true })).toBeVisible();
 
-  await page.getByLabel("Status").selectOption("APPLIED");
+  await page
+    .getByRole("region", { name: "Application status" })
+    .getByRole("combobox", { name: "Status" })
+    .selectOption("APPLIED");
   await page.getByRole("button", { name: "Update status" }).click();
   await expect(page.locator(".status-chip").filter({ hasText: "Applied" })).toBeVisible();
 
