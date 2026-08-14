@@ -23,12 +23,13 @@ The system should answer four questions quickly:
 - Create, read, edit, archive, restore and permanently delete owned opportunities.
 - Opportunity types: `JOB`, `INTERNSHIP`, `SCHOLARSHIP`, `PROGRAM`, `OTHER`.
 - Statuses: `SAVED`, `PREPARING`, `APPLIED`, `INTERVIEWING`, `OFFERED`, `ACCEPTED`, `REJECTED`, `WITHDRAWN`, `EXPIRED`.
-- Priority, organization, source URL, location, notes, deadline and next action.
+- Priority, organization, source URL, location, plain-text notes, deadline and next action.
 - Search and filters by status, type, priority, archive state and deadline window.
 - Dashboard summaries for due soon, overdue, active pipeline counts, next actions and recent activity.
 - Append-oriented user-facing activity history for meaningful lifecycle changes.
 - Explicit deadline precision/time-zone handling instead of silently inventing times.
 - Owner isolation on every private read and mutation.
+- Responsive authenticated browser workflows from registration through permanent delete.
 
 ## Architecture
 
@@ -70,7 +71,7 @@ The repository is a monorepo. The web client and API stay separate at the applic
 
 ## Verification
 
-The V1 HTTP boundary is frozen in OpenAPI 3.1 and checked against Laravel route/security/enumeration sources. CI also runs PostgreSQL-backed application tests, locked dependency audits, PHPStan, strict PHP/PSR/platform checks, full-history Gitleaks scanning, Docker stack smoke and running-stack CSRF/CORS assertions.
+The V1 HTTP boundary is frozen in OpenAPI 3.1 and checked against Laravel route/security/enumeration sources. CI runs PostgreSQL-backed application tests, unconditional production dependency audits, PHPStan, strict PHP/PSR/platform checks, full-history Gitleaks scanning, Docker stack smoke, running-stack CSRF/CORS assertions, PostgreSQL migration rollback/reapply evidence and a Playwright register-through-delete browser workflow.
 
 ## Documentation
 
@@ -86,9 +87,9 @@ The V1 HTTP boundary is frozen in OpenAPI 3.1 and checked against Laravel route/
 
 ## Status
 
-**Foundation through contract hardening is implemented.** Identity, owner-scoped CRUD, workflow/history, search/filters/deadlines, the action-first dashboard, OpenAPI contract checks, static analysis, secret hygiene and browser CSRF/CORS evidence are complete roadmap slices.
+**Foundation through browser V1 evidence is implemented.** Identity, owner-scoped CRUD, workflow/history, search/filters/deadlines, the action-first dashboard, authenticated browser workflows, OpenAPI contract checks, static analysis, secret hygiene, CSRF/CORS evidence, full browser E2E and migration rollback/reapply evidence are complete slices.
 
-The remaining V1 release work is product evidence rather than new infrastructure: authenticated browser entry, opportunity list/detail/create/edit surfaces, accessible validation and plain-text note rendering, product-level frontend tests, migration/rollback review and the reproducible end-to-end release demo. No `v1.0.0` tag should be created before those Definition-of-Done items are green on the exact release commit.
+The remaining tagged-release work is the final Definition-of-Done/documentation audit, release notes and verification that the exact release commit is green before creating `v1.0.0`.
 
 V1 uses Sanctum for first-party cookie/session authentication only; it does not issue personal access tokens.
 

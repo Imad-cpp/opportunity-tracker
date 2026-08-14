@@ -73,4 +73,4 @@ V1 does not require Redis, Meilisearch, object storage, microservices, Kubernete
 
 ## Local environment
 
-Docker Compose provides PostgreSQL 18.4, the Laravel 13 API runtime and the Next.js 16.2 web runtime. Node.js 24 LTS and PHP 8.4 are the scaffold toolchain baselines. Both applications keep committed dependency lockfiles, and CI proves reproducible installs/builds plus a real PostgreSQL migration/test boundary.
+Docker Compose provides PostgreSQL 18.4, the Laravel 13 API runtime and the Next.js 16.3 web runtime. Node.js 24 LTS and PHP 8.4 are the scaffold toolchain baselines. Both applications keep committed dependency lockfiles, and CI proves reproducible installs/builds plus a real PostgreSQL migration/test boundary.

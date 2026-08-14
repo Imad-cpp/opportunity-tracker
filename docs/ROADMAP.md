@@ -32,9 +32,11 @@ Owner-scoped action-first summary API, active pipeline counts, due-soon and over
 
 OpenAPI 3.1 contract and route/security drift checks, PHPStan static analysis, strict PHP/PSR/platform checks, locked dependency audits, full-history Gitleaks scanning, running-stack CSRF/CORS evidence and PostgreSQL/Docker integration CI.
 
-## 9. V1 release evidence
+## 9. V1 release evidence ⏳
 
-Complete the remaining browser product surfaces and V1 evidence: authenticated account entry, opportunity list/detail/create/edit flows, accessible form validation and plain-text note rendering, product-level frontend tests, migration/rollback review, reproducible end-to-end demo, final Definition-of-Done audit, changelog/release notes and tagged `v1.0.0`.
+Completed release evidence includes authenticated account entry, opportunity list/detail/create/edit flows, plain-text note rendering, next-action visibility, status/archive/restore/delete workflows, Playwright register-through-delete browser E2E and PostgreSQL migration rollback/reapply verification.
+
+Remaining release work is intentionally narrow: final Definition-of-Done/documentation audit, release notes, verification that the exact release commit is green, then the tagged `v1.0.0` release.
 
 ## Deferred after V1
 
