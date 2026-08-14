@@ -534,11 +534,11 @@ function OpportunityDetail({
   const [mutating, setMutating] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
 
-  const reload = useCallback(async () => {
+  const reload = useCallback(async (syncStatus = true) => {
     try {
       const [item, history] = await Promise.all([getOpportunity(id), getOpportunityEvents(id)]);
       setOpportunity(item);
-      setStatus(item.status);
+      if (syncStatus) setStatus(item.status);
       setEvents(history);
       setError(null);
     } catch (caught) {
@@ -603,7 +603,7 @@ function OpportunityDetail({
   if (!opportunity || !events) return <section className="workspace-panel loading-panel" aria-busy="true">Loading opportunity…</section>;
 
   if (editing) {
-    return <OpportunityForm account={account} opportunity={opportunity} onCancel={() => setEditing(false)} onSaved={(saved) => { setOpportunity(saved); setEditing(false); void reload(); onChanged(); }} />;
+    return <OpportunityForm account={account} opportunity={opportunity} onCancel={() => setEditing(false)} onSaved={(saved) => { setOpportunity(saved); setStatus(saved.status); setEditing(false); void reload(false); onChanged(); }} />;
   }
 
   return (
