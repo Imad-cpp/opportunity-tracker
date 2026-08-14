@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+_No changes yet._
+
+## 1.0.0 - 2026-08-14
+
 ### Added
 
 - Product and engineering foundation for Opportunity Tracker V1.
