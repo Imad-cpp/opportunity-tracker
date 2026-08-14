@@ -1,0 +1,84 @@
+name: Browser Security Boundary
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: browser-boundary-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  csrf-and-cors:
+    name: CSRF and CORS stack evidence
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+      - name: Build and start stack
+        run: docker compose up --build --detach
+      - name: Run database migrations
+        run: docker compose exec -T api php artisan migrate --force
+      - name: Verify first-party browser boundary
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          for attempt in $(seq 1 30); do
+            if curl --fail --silent --show-error http://127.0.0.1:8000/api/v1/health/live >/dev/null; then
+              break
+            fi
+            if [ "$attempt" -eq 30 ]; then
+              docker compose ps
+              docker compose logs --no-color api
+              exit 1
+            fi
+            sleep 2
+          done
+
+          curl --fail --silent --show-error \
+            --header 'Accept: application/json' \
+            --header 'Origin: http://localhost:3000' \
+            --cookie-jar /tmp/browser.cookies \
+            --dump-header /tmp/csrf.headers \
+            --output /dev/null \
+            http://127.0.0.1:8000/sanctum/csrf-cookie
+
+          grep -i -F 'access-control-allow-origin: http://localhost:3000' /tmp/csrf.headers
+          grep -i -F 'access-control-allow-credentials: true' /tmp/csrf.headers
+
+          login_status="$(curl --silent --show-error \
+            --request POST \
+            --header 'Accept: application/json' \
+            --header 'Content-Type: application/json' \
+            --header 'Origin: http://localhost:3000' \
+            --cookie /tmp/browser.cookies \
+            --dump-header /tmp/login.headers \
+            --output /tmp/login.json \
+            --write-out '%{http_code}' \
+            --data '{"email":"synthetic@example.test","password":"Synthetic-Password-123!"}' \
+            http://127.0.0.1:8000/api/v1/auth/login)"
+
+          test "${login_status}" = '419'
+          grep -i -F 'access-control-allow-origin: http://localhost:3000' /tmp/login.headers
+          grep -i -F 'access-control-allow-credentials: true' /tmp/login.headers
+
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          payload = json.loads(Path('/tmp/login.json').read_text())
+          assert payload.get('error', {}).get('code') == 'CSRF_TOKEN_MISMATCH', payload
+          PY
+
+          echo 'BROWSER_SECURITY_BOUNDARY=PASS'
+      - name: Show service state
+        if: always()
+        run: docker compose ps
+      - name: Tear down stack
+        if: always()
+        run: docker compose down --volumes --remove-orphans
