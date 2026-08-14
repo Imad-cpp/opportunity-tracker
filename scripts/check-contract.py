@@ -13,6 +13,7 @@ DEADLINE_INPUT_PATH = ROOT / "apps" / "api" / "app" / "Opportunities" / "Deadlin
 DASHBOARD_TYPES_PATH = ROOT / "apps" / "web" / "src" / "lib" / "dashboard-api.ts"
 
 ROUTE_RE = re.compile(r"Route::(get|post|patch|delete)\('([^']+)'")
+AUTH_PREFIXED_PATHS = {"/register", "/login"}
 PUBLIC_OPERATIONS = {
     ("GET", "/health/live"),
     ("POST", "/auth/register"),
@@ -55,6 +56,11 @@ def collect_refs(value: Any) -> list[str]:
     return refs
 
 
+def normalize_route(method: str, path: str) -> tuple[str, str]:
+    normalized_path = f"/auth{path}" if path in AUTH_PREFIXED_PATHS else path
+    return method.upper(), normalized_path
+
+
 errors: list[str] = []
 try:
     spec = json.loads(SPEC_PATH.read_text(encoding="utf-8"))
@@ -68,7 +74,7 @@ if spec.get("info", {}).get("version") != "1.0.0":
     errors.append("OpenAPI info.version must be exactly 1.0.0")
 
 route_text = ROUTES_PATH.read_text(encoding="utf-8")
-implemented = {(method.upper(), path) for method, path in ROUTE_RE.findall(route_text)}
+implemented = {normalize_route(method, path) for method, path in ROUTE_RE.findall(route_text)}
 
 documented: set[tuple[str, str]] = set()
 operation_ids: set[str] = set()
