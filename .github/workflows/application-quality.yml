@@ -285,7 +285,7 @@ jobs:
           done
 
           grep -F 'Opportunity Tracker' /tmp/web.html
-          grep -F 'Loading your application workspace' /tmp/web.html
+          grep -F 'Opening your private workspace' /tmp/web.html
           echo 'STACK_SMOKE=PASS'
       - name: Show service state
         if: always()
