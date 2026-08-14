@@ -1,36 +1,42 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Opportunity Tracker Web
 
-## Getting Started
+Next.js 16.2 + React 19 + TypeScript browser surface for the Opportunity Tracker monorepo.
 
-First, run the development server:
+## Boundary
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+The web app renders the action-first dashboard and reads the Laravel API through the existing first-party session. Authentication authority, validation, owner scoping and domain behavior stay server-side in `apps/api`.
+
+The browser does not store long-lived bearer tokens and does not calculate authoritative ownership, lifecycle state or deadline attention.
+
+## Environment
+
+```text
+NEXT_PUBLIC_API_BASE_URL=http://localhost:8000/api/v1
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+The root `compose.yaml` supplies this value for the local web container.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Commands
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+npm ci
+npm run lint
+npm run typecheck
+npm run build
+npm run dev
+```
 
-## Learn More
+Node.js 24 LTS is the supported V1 runtime line. Exact dependencies are committed in `package-lock.json`.
 
-To learn more about Next.js, take a look at the following resources:
+## Current dashboard evidence
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- active pipeline counts;
+- overdue and seven-day deadline attention;
+- due-soon next actions;
+- recent product activity;
+- loading, empty, unauthenticated and generic error states;
+- refresh and disabled behavior;
+- responsive mobile/desktop layouts;
+- visible keyboard focus and reduced-motion support.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Product-level frontend tests and the complete browser authentication/capture/edit flow remain tracked in the root Definition of Done.

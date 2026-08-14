@@ -25,7 +25,7 @@ The system should answer four questions quickly:
 - Statuses: `SAVED`, `PREPARING`, `APPLIED`, `INTERVIEWING`, `OFFERED`, `ACCEPTED`, `REJECTED`, `WITHDRAWN`, `EXPIRED`.
 - Priority, organization, source URL, location, notes, deadline and next action.
 - Search and filters by status, type, priority, archive state and deadline window.
-- Dashboard summaries for due soon, overdue, active and recently changed opportunities.
+- Dashboard summaries for due soon, overdue, active pipeline counts, next actions and recent activity.
 - Append-oriented user-facing activity history for meaningful lifecycle changes.
 - Explicit deadline precision/time-zone handling instead of silently inventing times.
 - Owner isolation on every private read and mutation.
@@ -81,9 +81,9 @@ The repository is a monorepo. The web client and API stay separate at the applic
 
 ## Status
 
-**Owner-scoped search, filters and deadline semantics are implemented.** The list endpoint now supports bounded title/organization search, allowlisted status/type/priority/archive/deadline filters, deterministic fixed-size pagination and account-time-zone date boundaries. Deadline create/update/clear preserves date-only versus exact precision, while API responses derive `OVERDUE`, `DUE_SOON` and `UPCOMING` attention without silently changing lifecycle status.
+**The action-first dashboard product slice is implemented.** The authenticated summary endpoint derives active pipeline counts, due-soon and overdue attention, next actions and recent owner-scoped activity directly from PostgreSQL. Summary payloads are deliberately minimal and do not copy owner identifiers or notes into dashboard data.
 
-Identity, CRUD, workflow/history and search/filters/deadlines are complete roadmap slices. The action-first dashboard and frontend product states are the next implementation step.
+The Next.js surface now replaces the scaffold with a responsive dashboard that includes loading, empty, error, refresh, disabled, keyboard-focus and reduced-motion behavior. Identity, CRUD, workflow/history, search/filters/deadlines and dashboard are complete roadmap slices. Contract hardening and release evidence are next.
 
 V1 uses Sanctum for first-party cookie/session authentication only; it does not issue personal access tokens.
 

@@ -10,9 +10,9 @@ A V1 release is complete only when the same exact release commit satisfies the a
 - [x] Archive/restore works without losing history.
 - [x] Permanent delete removes the opportunity and dependent events.
 - [x] Search and V1 filters work together predictably.
-- [ ] Dashboard shows due soon, overdue, active-status counts and recent activity.
+- [x] Dashboard shows due soon, overdue, active-status counts and recent activity.
 - [ ] Next action is visible in list/detail/dashboard where relevant.
-  - Backend capture/update and API representation are implemented; frontend/dashboard presentation remains open.
+  - Backend capture/update, API representation and dashboard presentation are implemented; dedicated list/detail frontend surfaces remain open.
 - [x] Date-only and exact-time deadline semantics are tested.
 
 ## Security and privacy
@@ -25,17 +25,19 @@ A V1 release is complete only when the same exact release commit satisfies the a
 - [x] CORS does not allow an unconfigured origin to become an allowed origin.
 - [x] URL scheme validation rejects non-HTTP(S) values.
 - [ ] User-authored notes are rendered as text, not HTML.
-  - Backend accepts bounded string notes; frontend rendering evidence is still required.
+  - Backend accepts bounded string notes; a note-rendering frontend surface does not exist yet.
 - [ ] Logs/tests/demos contain no secrets or real personal application data.
   - Current automated fixtures are synthetic; final release-wide secret/demo evidence remains open.
 
 ## Frontend
 
-- [ ] Responsive mobile and desktop layouts.
-- [ ] Keyboard navigation and visible focus states.
-- [ ] Loading, empty, error, success and disabled states.
+- [x] Responsive mobile and desktop layouts.
+  - The dashboard uses responsive pipeline, attention, opportunity and activity layouts with explicit mobile breakpoints.
+- [x] Keyboard navigation and visible focus states.
+- [x] Loading, empty, error, success and disabled states.
 - [ ] Forms expose validation errors accessibly.
-- [ ] No core workflow depends on hover only.
+  - Dashboard V1 has no form surface yet; this remains required when capture/edit UI is added.
+- [x] No core workflow depends on hover only.
 
 ## API and data
 
@@ -50,9 +52,9 @@ A V1 release is complete only when the same exact release commit satisfies the a
 ## Automated evidence
 
 - [ ] Backend formatting/static analysis/tests are green.
-  - Formatting and PostgreSQL-backed tests are green; static analysis is added in the hardening step.
+  - Formatting and PostgreSQL-backed tests, including dashboard aggregation/endpoint tests, are green; static analysis is added in the hardening step.
 - [ ] Frontend lint/typecheck/tests/build are green.
-  - Lint, typecheck and build are green; product-level frontend tests are not present yet.
+  - Lint, typecheck and build are green for the dashboard surface; product-level frontend tests are not present yet.
 - [x] Integration tests use PostgreSQL, not a different database engine as a substitute.
 - [ ] End-to-end demo proves register → create → update status → filter/dashboard → archive/restore → delete.
 - [ ] Dependency audit and secret-hygiene checks are green.
@@ -62,7 +64,7 @@ A V1 release is complete only when the same exact release commit satisfies the a
 ## Release evidence
 
 - [ ] README and architecture/security/data/API docs match the complete V1 implementation.
-  - Documents are synchronized through search/filters/deadlines; later V1 steps remain intentionally marked planned.
+  - Product/API/decision/roadmap documentation is synchronized through the dashboard slice; hardening and release steps remain intentionally open.
 - [ ] CHANGELOG and release notes are prepared.
 - [ ] Exact release commit is green before tag creation.
 - [ ] Tag/release points to that exact verified commit.

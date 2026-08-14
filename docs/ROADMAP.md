@@ -24,9 +24,9 @@ Transactional status changes, editable next actions and append-oriented `CREATED
 
 Owner-scoped bounded search, deterministic 20-item pagination, allowlisted filters, date-only/exact deadline behavior, account-time-zone boundaries and due-soon/overdue/upcoming derivation.
 
-## 7. Dashboard product surface
+## 7. Dashboard product surface ✅
 
-Action-first dashboard, recent activity and responsive/accessibility states.
+Owner-scoped action-first summary API, active pipeline counts, due-soon and overdue attention, next actions, recent activity, typed Next.js consumption and responsive/loading/empty/error/accessibility states.
 
 ## 8. Contract and hardening
 

@@ -39,7 +39,9 @@ Opportunity responses expose normalized deadline values together with `deadline_
 
 | Method | Path | Purpose | Status |
 |---|---|---|---|
-| GET | `/dashboard/summary` | Due-soon, overdue, status and recent-activity summary | Planned |
+| GET | `/dashboard/summary` | Action-first owner-scoped dashboard summary | Implemented |
+
+The dashboard summary returns a fixed seven-day attention horizon, active counts for `SAVED`, `PREPARING`, `APPLIED`, `INTERVIEWING` and `OFFERED`, up to six due-soon opportunities, up to six overdue opportunities, up to six next actions due by the horizon and up to eight recent product-history events. Opportunity-deadline urgency remains limited to pre-application `SAVED` and `PREPARING` records. Terminal outcomes are excluded from active counts. Dashboard opportunity summaries omit owner identifiers and notes; activity summaries omit actor identifiers.
 
 ## List query parameters
 

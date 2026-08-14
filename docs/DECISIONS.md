@@ -83,3 +83,7 @@ A product-history event and the opportunity mutation it represents are written i
 ## D-021 — No-op requests do not manufacture history
 
 History represents product changes rather than request volume. Repeating the same status, archive state, restore state or ordinary field values does not append a duplicate event. `UPDATED` stores sorted changed field names rather than copied user content.
+
+## D-022 — Dashboard aggregation is action-oriented and minimal
+
+Dashboard counts cover only active pipeline states: `SAVED`, `PREPARING`, `APPLIED`, `INTERVIEWING` and `OFFERED`. Deadline urgency keeps the existing pre-application semantics (`SAVED` and `PREPARING`), while next actions may surface across any active state. Recent activity stays owner-scoped but may include archived opportunities. The dashboard API returns only fields required by the surface rather than serializing full opportunity records, so owner identifiers and notes are not copied into summary payloads.

@@ -70,6 +70,8 @@ The dashboard should prioritize useful actions over vanity analytics:
 - How many active applications are in each status?
 - What changed recently?
 
+For dashboard purposes, the active pipeline is `SAVED`, `PREPARING`, `APPLIED`, `INTERVIEWING` and `OFFERED`; terminal outcomes are excluded from active counts. Opportunity-deadline urgency is limited to the pre-application `SAVED` and `PREPARING` states so a past application deadline does not make an already-applied record look overdue. Next actions may surface for any active state. Recent activity remains owner-scoped and may include archived opportunities so archive/restore history is still visible.
+
 ## Archive vs delete
 
 Archive hides an opportunity from the default active workspace without destroying its history. Restore reverses archive.
