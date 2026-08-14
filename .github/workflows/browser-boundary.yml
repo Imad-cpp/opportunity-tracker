@@ -41,14 +41,28 @@ jobs:
             sleep 2
           done
 
-          curl --fail --silent --show-error \
+          csrf_status="$(curl --silent --show-error \
             --header 'Accept: application/json' \
             --header 'Origin: http://localhost:3000' \
             --cookie-jar /tmp/browser.cookies \
             --dump-header /tmp/csrf.headers \
             --output /dev/null \
-            http://127.0.0.1:8000/sanctum/csrf-cookie
+            --write-out '%{http_code}' \
+            http://127.0.0.1:8000/sanctum/csrf-cookie)"
 
+          echo "CSRF_BOOTSTRAP_STATUS=${csrf_status}"
+          if grep -i -q -F 'access-control-allow-origin: http://localhost:3000' /tmp/csrf.headers; then
+            echo 'CSRF_CORS_ORIGIN=PASS'
+          else
+            echo 'CSRF_CORS_ORIGIN=FAIL'
+          fi
+          if grep -i -q -F 'access-control-allow-credentials: true' /tmp/csrf.headers; then
+            echo 'CSRF_CORS_CREDENTIALS=PASS'
+          else
+            echo 'CSRF_CORS_CREDENTIALS=FAIL'
+          fi
+
+          test "${csrf_status}" = '204'
           grep -i -F 'access-control-allow-origin: http://localhost:3000' /tmp/csrf.headers
           grep -i -F 'access-control-allow-credentials: true' /tmp/csrf.headers
 
@@ -63,6 +77,29 @@ jobs:
             --write-out '%{http_code}' \
             --data '{"email":"synthetic@example.test","password":"Synthetic-Password-123!"}' \
             http://127.0.0.1:8000/api/v1/auth/login)"
+
+          echo "LOGIN_WITHOUT_XSRF_STATUS=${login_status}"
+          if grep -i -q -F 'access-control-allow-origin: http://localhost:3000' /tmp/login.headers; then
+            echo 'LOGIN_CORS_ORIGIN=PASS'
+          else
+            echo 'LOGIN_CORS_ORIGIN=FAIL'
+          fi
+          if grep -i -q -F 'access-control-allow-credentials: true' /tmp/login.headers; then
+            echo 'LOGIN_CORS_CREDENTIALS=PASS'
+          else
+            echo 'LOGIN_CORS_CREDENTIALS=FAIL'
+          fi
+
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          try:
+              payload = json.loads(Path('/tmp/login.json').read_text())
+          except Exception:
+              print('LOGIN_ERROR_CODE=NON_JSON')
+          else:
+              print('LOGIN_ERROR_CODE=' + str(payload.get('error', {}).get('code', 'MISSING')))
+          PY
 
           test "${login_status}" = '419'
           grep -i -F 'access-control-allow-origin: http://localhost:3000' /tmp/login.headers
