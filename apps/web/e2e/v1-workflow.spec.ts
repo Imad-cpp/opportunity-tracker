@@ -35,7 +35,7 @@ test("register through delete works through the browser", async ({ page }) => {
   await page.getByLabel("Password").fill(password);
   await page.getByRole("button", { name: "Sign in" }).click();
 
-  await page.getByRole("button", { name: "Opportunities" }).click();
+  await page.getByRole("button", { name: "Opportunities", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Opportunities" })).toBeVisible();
   await page.getByRole("button", { name: "Add opportunity" }).click();
 
@@ -69,22 +69,22 @@ test("register through delete works through the browser", async ({ page }) => {
   await page.getByRole("button", { name: "Update status" }).click();
   await expect(page.locator(".status-chip").filter({ hasText: "Applied" })).toBeVisible();
 
-  await page.getByRole("button", { name: "Opportunities" }).click();
+  await page.getByRole("button", { name: "Opportunities", exact: true }).click();
   await page.getByPlaceholder("Search title or organization").fill(title);
   await page.getByRole("button", { name: "Apply" }).click();
   await expect(page.getByText(title, { exact: true })).toBeVisible();
 
-  await page.getByRole("button", { name: "Dashboard" }).click();
+  await page.getByRole("button", { name: "Dashboard", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Next actions" })).toBeVisible();
   await expect(page.getByText(title, { exact: true })).toBeVisible();
   await expect(page.getByText("Finish portfolio review", { exact: true })).toBeVisible();
 
-  await page.getByRole("button", { name: "Opportunities" }).click();
+  await page.getByRole("button", { name: "Opportunities", exact: true }).click();
   await page.getByRole("button", { name: new RegExp(title) }).click();
   await page.getByRole("button", { name: "Archive opportunity" }).click();
   await expect(page.locator(".status-chip--muted")).toHaveText("Archived");
 
-  await page.getByRole("button", { name: "Opportunities" }).click();
+  await page.getByRole("button", { name: "Opportunities", exact: true }).click();
   await expect(page.getByText(title, { exact: true })).toHaveCount(0);
   await page.getByLabel("Archived").check();
   await page.getByRole("button", { name: "Apply" }).click();
