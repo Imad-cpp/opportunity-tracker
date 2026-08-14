@@ -28,13 +28,13 @@ Owner-scoped bounded search, deterministic 20-item pagination, allowlisted filte
 
 Owner-scoped action-first summary API, active pipeline counts, due-soon and overdue attention, next actions, recent activity, typed Next.js consumption and responsive/loading/empty/error/accessibility states.
 
-## 8. Contract and hardening
+## 8. Contract and hardening ✅
 
-OpenAPI, static analysis, dependency locking/audits, secret hygiene, CORS/security evidence and PostgreSQL integration CI.
+OpenAPI 3.1 contract and route/security drift checks, PHPStan static analysis, strict PHP/PSR/platform checks, locked dependency audits, full-history Gitleaks scanning, running-stack CSRF/CORS evidence and PostgreSQL/Docker integration CI.
 
 ## 9. V1 release evidence
 
-Reproducible end-to-end demo, final Definition-of-Done audit, changelog/release notes and tagged `v1.0.0`.
+Complete the remaining browser product surfaces and V1 evidence: authenticated account entry, opportunity list/detail/create/edit flows, accessible form validation and plain-text note rendering, product-level frontend tests, migration/rollback review, reproducible end-to-end demo, final Definition-of-Done audit, changelog/release notes and tagged `v1.0.0`.
 
 ## Deferred after V1
 
